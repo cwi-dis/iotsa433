@@ -9,7 +9,6 @@
 #include <Esp.h>
 #include "iotsa.h"
 #include "iotsaWifi.h"
-#include "iotsaIOPort.h"
 
 // CHANGE: Add application includes and declarations here
 
