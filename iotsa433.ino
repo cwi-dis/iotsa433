@@ -9,13 +9,19 @@
 #include <Esp.h>
 #include "iotsa.h"
 #include "iotsaWifi.h"
+#include "iotsa433Send.h"
+#include "iotsa433Receive.h"
 
 // CHANGE: Add application includes and declarations here
 
 #define WITH_OTA    // Enable Over The Air updates from ArduinoIDE. Needs at least 1MB flash.
 
-IotsaApplication application("Iotsa 433Mhz Homa Automation Server");
+IotsaApplication application("Iotsa 433Mhz Home Automation Remote Control Server");
+
 IotsaWifiMod wifiMod(application);
+
+Iotsa433SendMod sendMod(application); 
+Iotsa433ReceiveMod receiveMod(application); 
 
 #ifdef WITH_OTA
 #include "iotsaOta.h"
