@@ -116,4 +116,5 @@ bool decode433_tristate(uint32_t dec, int bitLength, String& tristate) {
   const char *tri_buf = bin2tristate(bin_buf);
   if (tri_buf == NULL) return false;
   tristate = String(tri_buf);
+  return true;
   }

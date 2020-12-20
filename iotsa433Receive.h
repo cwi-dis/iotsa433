@@ -20,10 +20,24 @@ protected:
   bool getHandler(const char *path, JsonObject& reply);
   bool putHandler(const char *path, const JsonVariant& request, JsonObject& reply);
   void _received(uint32_t value);
+  void _forward_one();
   void configLoad();
   void configSave();
   void handler();
   String argument;
+
+  struct forwarder {
+    String tristate; // if non-empty, only apply to this tri-state code
+    String brand; // if non-empty, only apply to switches of this brand
+    String dipswitches; // if non-empty only apply to switch with this dip-switch selection
+    String button;  // if non-empty only apply to this button name
+    String onoff; // if non-empty only apply to this on/off setting
+    String url; // URL to send a request to
+    bool parameters;  // if True, add URL parameters for each parameter/value
+};
+
+int nForwarders = 0;
+struct forwarder *forwarders = NULL;
 };
 
 #endif

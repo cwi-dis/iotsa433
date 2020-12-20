@@ -17,6 +17,7 @@ struct received {
 static struct received received_buffer[RB_SIZE];
 static int received_in = 0;
 static int received_out = 0;
+static int received_forward = 0;
 
 #ifdef IOTSA_WITH_WEB
 void
@@ -34,7 +35,7 @@ Iotsa433ReceiveMod::handler() {
   message += htmlEncode(argument);
   message += "'><br><input type='submit'></form>";
 
-  message += "<h2>Received codes</h2>";
+  message += "<h2>Recently received codes</h2>";
   message += "<table><tr><th>ms ago</th><th>decimal</th><th>tristate</th><th>brand</th><th>dip switches</th><th>button</th><th>on/off</th></tr>";
   for(int i = received_out; i != received_in; i = RB_INC(i)) {
     message += "<tr><td>"  + String(millis()-received_buffer[i].millis) + "</td><td>" + String(received_buffer[i].code) + "</td><td>";
@@ -127,6 +128,9 @@ void Iotsa433ReceiveMod::loop() {
     }
     switch433.resetAvailable();
   }
+  if (received_forward != received_in && nForwarders > 0) {
+    _forward_one();
+  }
 }
 
 void Iotsa433ReceiveMod::_received(uint32_t code) {
@@ -134,4 +138,46 @@ void Iotsa433ReceiveMod::_received(uint32_t code) {
     received_buffer[received_in].millis = millis();
     received_in = RB_INC(received_in);
     if (received_in == received_out) received_out = RB_INC(received_out);
+}
+
+void Iotsa433ReceiveMod::_forward_one() {
+#if 0
+    String tristate; // if non-empty, only apply to this tri-state code
+    String brand; // if non-empty, only apply to switches of this brand
+    String dipswitches; // if non-empty only apply to switch with this dip-switch selection
+    String button;  // if non-empty only apply to this button name
+    String onoff; // if non-empty only apply to this on/off setting
+    String url; // URL to send a request to
+    bool parameters;  // if True, add URL parameters for each parameter/value
+  #endif
+  String tristate;
+  if (!decode433_tristate(received_buffer[received_forward].code, 24, tristate)) {
+    IotsaSerial.println("433recv: ignore non-tristate code");
+    received_forward = RB_INC(received_forward);
+    return;
+  }
+  String brand = "unknown";
+  String dipswitches;
+  String button;
+  String onoff;
+  if( decode433_hema(received_buffer[received_forward].code, 24, dipswitches, button, onoff)) {
+    brand = "HEMA";
+  }
+  received_forward = RB_INC(received_forward);
+
+  for (int i=0; i< nForwarders; i++) {
+    if (forwarders[i].tristate != "" && forwarders[i].tristate != tristate) continue;
+    if (forwarders[i].brand != "" && forwarders[i].brand != brand) continue;
+    if (forwarders[i].dipswitches != "" && forwarders[i].dipswitches != dipswitches) continue;
+    if (forwarders[i].button != "" && forwarders[i].button != button) continue;
+    if (forwarders[i].onoff != "" && forwarders[i].onoff != onoff) continue;
+    // This forwarder applies to this button press.
+    String url = forwarders[i].url;
+    if (forwarders[i].parameters) {
+      url += "?tristate=" + tristate + "&brand=" + brand + "&dipswitches=" + dipswitches + "&button=" + button + "&onoff=" + onoff;
+    }
+    IFDEBUG IotsaSerial.print("433recv: GET ");
+    IFDEBUG IotsaSerial.println(url);
+    break;
+  }
 }
