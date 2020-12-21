@@ -24,20 +24,22 @@ protected:
   void configLoad();
   void configSave();
   void handler();
-  String argument;
 
   struct forwarder {
+    String url; // URL to send a request to
     String tristate; // if non-empty, only apply to this tri-state code
     String brand; // if non-empty, only apply to switches of this brand
     String dipswitches; // if non-empty only apply to switch with this dip-switch selection
     String button;  // if non-empty only apply to this button name
     String onoff; // if non-empty only apply to this on/off setting
-    String url; // URL to send a request to
     bool parameters;  // if True, add URL parameters for each parameter/value
-};
+  };
+  bool _addForwarder(struct forwarder& newForwarder);
+  bool _delForwarder(int index);
+  bool _swapForwarder(int oldIndex, int newIndex);
 
-int nForwarders = 0;
-struct forwarder *forwarders = NULL;
+  int nForwarders = 0;
+  struct forwarder *forwarders = NULL;
 };
 
 #endif
