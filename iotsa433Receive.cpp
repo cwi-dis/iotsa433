@@ -40,6 +40,63 @@ void forwarder433::configSave(IotsaConfigFileSave& cf, String& f_name) {
   cf.put(f_name + ".parameters", (int)parameters);
 }
 
+void forwarder433::formHandlerTH(String& message) {
+ message += "<th>URL</th><th>tristate</th><th>brand</th><th>dipswitches</th><th>button</th><th>onoff</th><th>parameters?</th>";
+}
+
+void forwarder433::formHandlerTD(String& message) {
+    message += "<td>";
+    message += url;
+    message += "</td><td>";
+    message += tristate;
+    message += "</td><td>";
+    message += brand;
+    message += "</td><td>";
+    message += dipswitches;
+    message += "</td><td>";
+    message += button;
+    message += "</td><td>";
+    message += onoff;
+    message += "</td><td>";
+    message += parameters;
+    message += "</td>";
+}
+
+#ifdef IOTSA_WITH_WEB
+bool forwarder433::formArgHandler(IotsaWebServer *server) {
+
+}
+
+#endif
+#ifdef IOTSA_WITH_API
+void forwarder433::getHandler(JsonObject& reply) {
+
+}
+
+bool forwarder433::putHandler(const JsonVariant& request) {
+
+}
+
+#endif
+bool forwarder433::matches(String& _tristate, String& _brand, String& _dipswitches, String& _button, String& _onoff) {
+  if (tristate != "" && _tristate != tristate) return false;
+  if (brand != "" && _brand != brand) return false;
+  if (dipswitches != "" && _dipswitches != dipswitches) return false;
+  if (button != "" && _button != button) return false;
+  if (onoff != "" && _onoff != onoff) return false;
+  return true;
+}
+
+bool forwarder433::send(String& _tristate, String& _brand, String& _dipswitches, String& _button, String& _onoff) {
+  // This forwarder applies to this button press.
+  String _url = url;
+  if (parameters) {
+    url += "?tristate=" + _tristate + "&brand=" + _brand + "&dipswitches=" + _dipswitches + "&button=" + _button + "&onoff=" + _onoff;
+  }
+  IFDEBUG IotsaSerial.print("433recv: GET ");
+  IFDEBUG IotsaSerial.println(url);
+  return true;
+}
 
 bool Iotsa433ReceiveMod::_addForwarder(forwarder433& newForwarder) {
   forwarders.push_back(newForwarder);
@@ -104,25 +161,18 @@ Iotsa433ReceiveMod::handler() {
     bool parameters;  // if True, add URL parameters for each parameter/value
 #endif
   message += "<h2>Configuration</h2><h3>Defined forwarders</h3>";
-  message += "<table><tr><th>index</th><th>URL</th><th>tristate</th><th>brand</th><th>dipswitches</th><th>button</th><th>onoff</th><th>parameters?</th><th>OP</th></tr>";
+  message += "<table><tr><th>index</th>";
+  forwarder433::formHandlerTH(message);
+  message += "<th>OP</th></tr>";
   int i = 0;
   int last_i = forwarders.size()-1;
   for(auto it: forwarders) {
-    message += "<tr><td>" + String(i) + "</td><td>";
-    message += it.url;
-    message += "</td><td>";
-    message += it.tristate;
-    message += "</td><td>";
-    message += it.brand;
-    message += "</td><td>";
-    message += it.dipswitches;
-    message += "</td><td>";
-    message += it.button;
-    message += "</td><td>";
-    message += it.onoff;
-    message += "</td><td>";
-    message += it.parameters;
-    message += "</td><td>";
+    // First field: index
+    message += "<tr><td>" + String(i) + "</td>";
+    // Subsequent fields: from forwarder433
+    it.formHandlerTD(message);
+    // Last field: operations
+    message += "<td>";
     message += "<form><input type='hidden' name='index' value='" + String(i) + "'><input type='submit' name='command' value='Delete'>";
     if (i != 0) message += "<br><input type='submit' name='command' value='Up'>";
     if (i != last_i) message += "<br><input type='submit' name='command' value='Down'>";;
@@ -280,18 +330,9 @@ void Iotsa433ReceiveMod::_forward_one() {
   received_forward = RB_INC(received_forward);
 
   for (auto it: forwarders) {
-    if (it.tristate != "" && it.tristate != tristate) continue;
-    if (it.brand != "" && it.brand != brand) continue;
-    if (it.dipswitches != "" && it.dipswitches != dipswitches) continue;
-    if (it.button != "" && it.button != button) continue;
-    if (it.onoff != "" && it.onoff != onoff) continue;
-    // This forwarder applies to this button press.
-    String url = it.url;
-    if (it.parameters) {
-      url += "?tristate=" + tristate + "&brand=" + brand + "&dipswitches=" + dipswitches + "&button=" + button + "&onoff=" + onoff;
+    if (it.matches(tristate, brand, dipswitches, button, onoff)) {
+      bool ok = it.send(tristate, brand, dipswitches, button, onoff);
+      break;
     }
-    IFDEBUG IotsaSerial.print("433recv: GET ");
-    IFDEBUG IotsaSerial.println(url);
-    break;
   }
 }
