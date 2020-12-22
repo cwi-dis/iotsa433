@@ -18,7 +18,7 @@ static int received_in = 0;
 static int received_out = 0;
 static int received_forward = 0;
 
-void forwarder433::configLoad(IotsaConfigFileLoad& cf, String& f_name) {
+void Iotsa433ReveiveForwarder::configLoad(IotsaConfigFileLoad& cf, String& f_name) {
   cf.get(f_name + ".url", url, "");
   cf.get(f_name + ".tristate", tristate, "");
   cf.get(f_name + ".brand", brand, "");
@@ -30,7 +30,7 @@ void forwarder433::configLoad(IotsaConfigFileLoad& cf, String& f_name) {
   parameters = intvalue;
 }
 
-void forwarder433::configSave(IotsaConfigFileSave& cf, String& f_name) {
+void Iotsa433ReveiveForwarder::configSave(IotsaConfigFileSave& cf, String& f_name) {
   cf.put(f_name + ".url", url);
   cf.put(f_name + ".tristate", tristate);
   cf.put(f_name + ".brand", brand);
@@ -40,11 +40,20 @@ void forwarder433::configSave(IotsaConfigFileSave& cf, String& f_name) {
   cf.put(f_name + ".parameters", (int)parameters);
 }
 
-void forwarder433::formHandlerTH(String& message) {
+void Iotsa433ReveiveForwarder::formHandlerTH(String& message) {
  message += "<th>URL</th><th>tristate</th><th>brand</th><th>dipswitches</th><th>button</th><th>onoff</th><th>parameters?</th>";
 }
 
-void forwarder433::formHandlerTD(String& message) {
+void Iotsa433ReveiveForwarder::formHandler(String& message) {
+  message += "URL: <input name='url'><br>";
+  message += "Filter on tristate: <input name='tristate'><br>";
+  message += "Filter on brand: <input name='brand'><br>";
+  message += "Filter on dipswitches: <input name='dipswitches'><br>";
+  message += "Filter on onoff: <input name='onoff'><br>";
+  message += "Add parameters to URL on reception: <input type='checkbox' name='parameters'><br>";
+}
+
+void Iotsa433ReveiveForwarder::formHandlerTD(String& message) {
     message += "<td>";
     message += url;
     message += "</td><td>";
@@ -63,22 +72,67 @@ void forwarder433::formHandlerTD(String& message) {
 }
 
 #ifdef IOTSA_WITH_WEB
-bool forwarder433::formArgHandler(IotsaWebServer *server) {
-
+bool Iotsa433ReveiveForwarder::formArgHandler(IotsaWebServer *server) {
+  url = server->arg("url"); 
+  tristate = server->arg("tristate"); 
+  brand = server->arg("brand"); 
+  dipswitches = server->arg("dipswitches"); 
+  button = server->arg("button"); 
+  onoff = server->arg("onoff"); 
+  String parameters = server->arg("parameters"); 
+  parameters = parameters != "" && parameters != "0";
+  return true;
 }
 
 #endif
 #ifdef IOTSA_WITH_API
-void forwarder433::getHandler(JsonObject& reply) {
-
+void Iotsa433ReveiveForwarder::getHandler(JsonObject& reply) {
+  reply["url"] = url;
+  reply["tristate"] = tristate;
+  reply["brand"] = brand;
+  reply["dipswitches"] = dipswitches;
+  reply["button"] = button;
+  reply["onoff"] = onoff;
+  reply["parameters"] = parameters;
 }
 
-bool forwarder433::putHandler(const JsonVariant& request) {
-
+bool Iotsa433ReveiveForwarder::putHandler(const JsonVariant& request) {
+  if (!request.is<JsonObject>()) return false;
+  bool any = false;
+  const JsonObject& reqObj = request.as<JsonObject>();
+  if (reqObj.containsKey("url")) {
+    any = true;
+    url = reqObj["url"].as<String>();
+  }
+  if (reqObj.containsKey("tristate")) {
+    any = true;
+    tristate = reqObj["tristate"].as<String>();
+  }
+  if (reqObj.containsKey("brand")) {
+    any = true;
+    brand = reqObj["brand"].as<String>();
+  }
+  if (reqObj.containsKey("dipswitches")) {
+    any = true;
+    dipswitches = reqObj["dipswitches"].as<String>();
+  }
+  if (reqObj.containsKey("button")) {
+    any = true;
+    button = reqObj["button"].as<String>();
+  }
+  if (reqObj.containsKey("onoff")) {
+    any = true;
+    onoff = reqObj["onoff"].as<String>();
+  }
+  if (reqObj.containsKey("parameters")) {
+    any = true;
+    parameters = reqObj["parameters"].as<int>();
+  }
+  return any;
 }
 
 #endif
-bool forwarder433::matches(String& _tristate, String& _brand, String& _dipswitches, String& _button, String& _onoff) {
+bool Iotsa433ReveiveForwarder::matches(String& _tristate, String& _brand, String& _dipswitches, String& _button, String& _onoff) {
   if (tristate != "" && _tristate != tristate) return false;
   if (brand != "" && _brand != brand) return false;
   if (dipswitches != "" && _dipswitches != dipswitches) return false;
@@ -87,7 +141,7 @@ bool forwarder433::matches(String& _tristate, String& _brand, String& _dipswitch
   return true;
 }
 
-bool forwarder433::send(String& _tristate, String& _brand, String& _dipswitches, String& _button, String& _onoff) {
+bool Iotsa433ReveiveForwarder::send(String& _tristate, String& _brand, String& _dipswitches, String& _button, String& _onoff) {
   // This forwarder applies to this button press.
   String _url = url;
   if (parameters) {
@@ -98,7 +152,7 @@ bool forwarder433::send(String& _tristate, String& _brand, String& _dipswitches,
   return true;
 }
 
-bool Iotsa433ReceiveMod::_addForwarder(forwarder433& newForwarder) {
+bool Iotsa433ReceiveMod::_addForwarder(Iotsa433ReveiveForwarder& newForwarder) {
   forwarders.push_back(newForwarder);
   return true;
 }
@@ -109,7 +163,7 @@ bool Iotsa433ReceiveMod::_delForwarder(int index) {
 }
 
 bool Iotsa433ReceiveMod::_swapForwarder(int oldIndex, int newIndex) {
-  forwarder433 tmp = forwarders[oldIndex];
+  Iotsa433ReveiveForwarder tmp = forwarders[oldIndex];
   forwarders[oldIndex] = forwarders[newIndex];
   forwarders[newIndex] = tmp;
   return true;
@@ -123,15 +177,8 @@ Iotsa433ReceiveMod::handler() {
     if (needsAuthentication()) return;
     String command = server->arg("command");
     if (command == "Add") {
-      forwarder433 newfw;
-      newfw.url = server->arg("url"); 
-      newfw.tristate = server->arg("tristate"); 
-      newfw.brand = server->arg("brand"); 
-      newfw.dipswitches = server->arg("dipswitches"); 
-      newfw.button = server->arg("button"); 
-      newfw.onoff = server->arg("onoff"); 
-      String parameters = server->arg("parameters"); 
-      newfw.parameters = parameters != "" && parameters != "0";
+      Iotsa433ReveiveForwarder newfw;
+      newfw.formArgHandler(server);
       anyChanged = _addForwarder(newfw);
     } else
     if (command == "Delete") {
@@ -162,7 +209,7 @@ Iotsa433ReceiveMod::handler() {
 #endif
   message += "<h2>Configuration</h2><h3>Defined forwarders</h3>";
   message += "<table><tr><th>index</th>";
-  forwarder433::formHandlerTH(message);
+  Iotsa433ReveiveForwarder::formHandlerTH(message);
   message += "<th>OP</th></tr>";
   int i = 0;
   int last_i = forwarders.size()-1;
@@ -183,12 +230,7 @@ Iotsa433ReceiveMod::handler() {
   message += "</table>";
   message += "<h3>Add Forwarder</h3></table>";
   message += "<form>";
-  message += "URL: <input name='url'><br>";
-  message += "Filter on tristate: <input name='tristate'><br>";
-  message += "Filter on brand: <input name='brand'><br>";
-  message += "Filter on dipswitches: <input name='dipswitches'><br>";
-  message += "Filter on onoff: <input name='onoff'><br>";
-  message += "Add parameters to URL on reception: <input type='checkbox' name='parameters'><br>";
+  Iotsa433ReveiveForwarder::formHandler(message);
   message += "<br><input type='submit' name='command' value='Add'></form>";
   // Operation
   message += "<h2>Recently received codes</h2>";
@@ -236,6 +278,27 @@ void Iotsa433ReceiveMod::setup() {
 
 #ifdef IOTSA_WITH_API
 bool Iotsa433ReceiveMod::getHandler(const char *path, JsonObject& reply) {
+  JsonArray rvConfig = reply.createNestedArray("forwarders");
+  for (auto it: forwarders) {
+    JsonObject fRv = rvConfig.createNestedObject();
+    it.getHandler(fRv);
+  }
+  JsonArray rvReceived = reply.createNestedArray("received");
+  for(int i = received_out; i != received_in; i = RB_INC(i)) {
+    JsonObject fRv = rvReceived.createNestedObject();
+    
+    fRv["millis"] = millis() - received_buffer[i].millis;
+    String tri_buf;
+    if (decode433_tristate(received_buffer[i].code, 24, tri_buf)) fRv["tristate"] = tri_buf;
+    String dip_buf;
+    String button_buf;
+    String onoff_buf;
+    bool is_hema = decode433_hema(received_buffer[i].code, 24, dip_buf, button_buf, onoff_buf);
+    if (is_hema) fRv["brand"] = "HEMA";
+    fRv["dipswitches"] = dip_buf;
+    fRv["button"] = button_buf;
+    fRv["onoff"] = onoff_buf;
+  }
   return true;
 }
 
@@ -273,7 +336,7 @@ void Iotsa433ReceiveMod::configLoad() {
   if (nForwarders == 0) return;
   for(int i=0; i<nForwarders; i++) {
     String f_name = String(i);
-    forwarder433 newForwarder;
+    Iotsa433ReveiveForwarder newForwarder;
     newForwarder.configLoad(cf, f_name);
     _addForwarder(newForwarder);
   }

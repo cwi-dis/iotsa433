@@ -10,12 +10,13 @@
 #define Iotsa433ReceiveModBaseMod IotsaMod
 #endif
 
-class forwarder433 {
+class Iotsa433ReveiveForwarder {
 public:
   void configLoad(IotsaConfigFileLoad& cf, String& name);
   void configSave(IotsaConfigFileSave& cf, String& name);
   static void formHandlerTH(String& message); //< Emit <th> fields with names
   void formHandlerTD(String& message);  //< Emit <td> fields with data
+  static void formHandler(String& message); //< Emit empty form to add forwarder
 #ifdef IOTSA_WITH_WEB
   bool formArgHandler(IotsaWebServer *server);
 #endif
@@ -52,10 +53,10 @@ protected:
   void configSave();
   void handler();
 
-  bool _addForwarder(forwarder433& newForwarder);
+  bool _addForwarder(Iotsa433ReveiveForwarder& newForwarder);
   bool _delForwarder(int index);
   bool _swapForwarder(int oldIndex, int newIndex);
-  std::vector<forwarder433> forwarders;
+  std::vector<Iotsa433ReveiveForwarder> forwarders;
 };
 
 #endif
