@@ -22,8 +22,8 @@ IotsaApplication application("Iotsa 433Mhz Home Automation Remote Control Server
 
 IotsaWifiMod wifiMod(application);
 
-Iotsa433SendMod sendMod(application); 
-Iotsa433ReceiveMod receiveMod(application); 
+Iotsa433SendMod sendMod(application);
+Iotsa433ReceiveMod receiveMod(application);
 
 #ifdef WITH_OTA
 #include "iotsaOta.h"

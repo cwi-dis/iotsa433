@@ -3,7 +3,7 @@
 #include <RCSwitch.h>
 #include "decode433.h"
 
-RCSwitch switch433;
+RCSwitch switch433; // Note: shared variable with Iotsa433Send
 int switch433_pin_receive = 4;
 
 struct received {
