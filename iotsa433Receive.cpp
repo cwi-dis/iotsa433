@@ -44,7 +44,7 @@ Iotsa433ReceiveMod::handler() {
     String command = server->arg("command");
     if (command == "Add") {
       Iotsa433ReveiveForwarder newfw;
-      newfw.formArgHandler(server);
+      newfw.formArgHandler(server, "");
       anyChanged = _addForwarder(newfw);
     } else
     if (command == "Delete") {
@@ -196,14 +196,10 @@ void Iotsa433ReceiveMod::configLoad() {
   IotsaConfigFileLoad cf("/config/433receive.cfg");
 
   forwarders.clear();
-  int nForwarders;
-  cf.get("nForwarders", nForwarders, 0);
-  forwarders.reserve(nForwarders);
-  if (nForwarders == 0) return;
-  for(int i=0; i<nForwarders; i++) {
-    String f_name = String(i);
+  for(int idx=0; ; idx++) {
+    String f_name = String(idx);
     Iotsa433ReveiveForwarder newForwarder;
-    newForwarder.configLoad(cf, f_name);
+    if (!newForwarder.configLoad(cf, f_name)) break;
     _addForwarder(newForwarder);
   }
 }
@@ -211,10 +207,9 @@ void Iotsa433ReceiveMod::configLoad() {
 void Iotsa433ReceiveMod::configSave() {
   IotsaConfigFileSave cf("/config/433receive.cfg");
 
-  cf.put("nForwarders", (int)forwarders.size());
-  int i = 0;
+  int idx = 0;
   for(auto it: forwarders) {
-    String f_name = String(i++);
+    String f_name = String(idx++);
     it.configSave(cf, f_name);
   }
 }

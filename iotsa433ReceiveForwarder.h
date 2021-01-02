@@ -4,19 +4,20 @@
 #include "iotsaApi.h"
 #include "iotsaConfigFile.h"
 
-class Iotsa433ReveiveForwarder {
+class Iotsa433ReveiveForwarder : public IotsaApiModObject {
 public:
-  void configLoad(IotsaConfigFileLoad& cf, String& name);
-  void configSave(IotsaConfigFileSave& cf, String& name);
-  static void formHandlerTH(String& message); //< Emit <th> fields with names
-  void formHandlerTD(String& message);  //< Emit <td> fields with data
-  static void formHandler(String& message); //< Emit empty form to add forwarder
+  bool configLoad(IotsaConfigFileLoad& cf, String& name) override;
+  void configSave(IotsaConfigFileSave& cf, String& name) override;
 #ifdef IOTSA_WITH_WEB
-  bool formArgHandler(IotsaWebServer *server);
+  static void formHandlerTH(String& message) /*override*/; //< Emit <th> fields with names
+  static void formHandler(String& message) /*override*/; //< Emit empty form to add forwarder
+  void formHandler(String& message, String& text, String& f_name) override;
+  void formHandlerTD(String& message) override;  //< Emit <td> fields with data
+  bool formArgHandler(IotsaWebServer *server, String f_name) override;
 #endif
 #ifdef IOTSA_WITH_API
-  void getHandler(JsonObject& reply);
-  bool putHandler(const JsonVariant& request);
+  void getHandler(JsonObject& reply) override;
+  bool putHandler(const JsonVariant& request) override;
 #endif
   bool matches(String& _tristate, String& _brand, String& _dipswitches, String& _button, String& _onoff);
   bool send(String& _tristate, String& _brand, String& _dipswitches, String& _button, String& _onoff);

@@ -2,16 +2,16 @@
 #include "iotsa433ReceiveForwarder.h"
 #include <RCSwitch.h>
 
-void Iotsa433ReveiveForwarder::configLoad(IotsaConfigFileLoad& cf, String& f_name) {
+bool Iotsa433ReveiveForwarder::configLoad(IotsaConfigFileLoad& cf, String& f_name) {
   cf.get(f_name + ".url", url, "");
+  if (url == "") return false;
   cf.get(f_name + ".tristate", tristate, "");
   cf.get(f_name + ".brand", brand, "");
   cf.get(f_name + ".dipswitches", dipswitches, "");
   cf.get(f_name + ".button", button, "");
   cf.get(f_name + ".onoff", onoff, "");
-  int intvalue;
-  cf.get(f_name + ".parameters", intvalue, 0);
-  parameters = intvalue;
+  cf.get(f_name + ".parameters", parameters, false);
+  return true;
 }
 
 void Iotsa433ReveiveForwarder::configSave(IotsaConfigFileSave& cf, String& f_name) {
@@ -37,6 +37,10 @@ void Iotsa433ReveiveForwarder::formHandler(String& message) {
   message += "Add parameters to URL on reception: <input type='checkbox' name='parameters'><br>";
 }
 
+void Iotsa433ReveiveForwarder::formHandler(String& message, String& text, String& f_name) {
+  IotsaSerial.println("Iotsa433ReveiveForwarder::formHandler not implemented");
+}
+
 void Iotsa433ReveiveForwarder::formHandlerTD(String& message) {
     message += "<td>";
     message += url;
@@ -56,7 +60,8 @@ void Iotsa433ReveiveForwarder::formHandlerTD(String& message) {
 }
 
 #ifdef IOTSA_WITH_WEB
-bool Iotsa433ReveiveForwarder::formArgHandler(IotsaWebServer *server) {
+bool Iotsa433ReveiveForwarder::formArgHandler(IotsaWebServer *server, String f_name) {
+  // f_name unused for this object.
   url = server->arg("url"); 
   tristate = server->arg("tristate"); 
   brand = server->arg("brand"); 
