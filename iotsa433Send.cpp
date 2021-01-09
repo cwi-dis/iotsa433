@@ -46,20 +46,12 @@ Iotsa433SendMod::handler() {
     server->send(200, "text/plain", "OK");
     return;
   }
-#if 0
-  if( server->hasArg("argument")) {
-    if (needsAuthentication()) return;
-    argument = server->arg("argument");
-    anyChanged = true;
-  }
-  if (anyChanged) configSave();
-#endif
   String message = "<html><head><title>433MHz sender module</title></head><body><h1>433 MHz sender module</h1>";
 
   message += "<h2>Send Command</h2><form method='get'>";
   message += "Dipswitches: <input name='dipswitches'><br>";
   message += "<i>(example: 01011, how DIP switches on device are set)</i><br>";
-  message += "Button: <input name='dipswitches'><br>";
+  message += "Button: <input name='button'><br>";
   message += "<i>(example: A, label on remote control button, or 01000, binary bitpattern)</i><br>";
   message += "On/Off: <input name='onoff'><br>";
   message += "<i>(example: on or off)</i><br>";
