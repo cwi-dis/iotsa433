@@ -10,8 +10,8 @@ struct received {
   uint32_t millis;
   uint32_t code;
   int protocol;
-  int bitLength;
-  int delay;
+  int bits;
+  int bitTime;
 };
 
 #define RB_SIZE 8
@@ -103,13 +103,13 @@ Iotsa433ReceiveMod::handler() {
   message += "<br><input type='submit' name='command' value='Add'></form>";
   // Operation
   message += "<h2>Recently received codes</h2>";
-  message += "<table><tr><th>ms ago</th><th>decimal</th><th>protocol</th><th>bitlength</th><th>delay</th><th>tristate</th><th>brand</th><th>dip switches</th><th>button</th><th>on/off</th></tr>";
+  message += "<table><tr><th>ms ago</th><th>decimal</th><th>protocol</th><th>bits</th><th>bitTime</th><th>tristate</th><th>brand</th><th>dip switches</th><th>button</th><th>on/off</th></tr>";
   for(int i = received_out; i != received_in; i = RB_INC(i)) {
     message += "<tr><td>"  + String(millis()-received_buffer[i].millis) + "</td>";
     message += "<td>" + String(received_buffer[i].code) + "</td>";
     message += "<td>" + String(received_buffer[i].protocol) + "</td>";
-    message += "<td>" + String(received_buffer[i].bitLength) + "</td>";
-    message += "<td>" + String(received_buffer[i].delay) + "</td>";
+    message += "<td>" + String(received_buffer[i].bits) + "</td>";
+    message += "<td>" + String(received_buffer[i].bitTime) + "</td>";
     message += "<td>";
     String tri_buf;
     if (decode433_tristate(received_buffer[i].code, 24, tri_buf)) {
@@ -163,8 +163,8 @@ bool Iotsa433ReceiveMod::getHandler(const char *path, JsonObject& reply) {
     
     fRv["millis"] = millis() - received_buffer[i].millis;
     fRv["protocol"] = received_buffer[i].protocol;
-    fRv["bitLength"] = millis() - received_buffer[i].bitLength;
-    fRv["delay"] = millis() - received_buffer[i].delay;
+    fRv["bits"] = millis() - received_buffer[i].bits;
+    fRv["bitTime"] = millis() - received_buffer[i].bitTime;
     String tri_buf;
     if (decode433_tristate(received_buffer[i].code, 24, tri_buf)) fRv["tristate"] = tri_buf;
     String dip_buf;
@@ -228,15 +228,11 @@ void Iotsa433ReceiveMod::configSave() {
 void Iotsa433ReceiveMod::loop() {
   if (switch433.available()) {
     uint32_t code = switch433.getReceivedValue();
-    int bitLength = switch433.getReceivedBitlength();
+    int bits = switch433.getReceivedBitlength();
     int protocol = switch433.getReceivedProtocol();
-    int delay = switch433.getReceivedDelay();
+    int bitTime = switch433.getReceivedDelay();
     IFDEBUG IotsaSerial.printf("433recv: ts=%lu msg=0x%x\n", millis(), code);
-    if (switch433.getReceivedBitlength() != 24) {
-      IotsaSerial.println("433recv: ignore non-24-bit code");
-    } else {
-      _received(code, protocol, bitLength, delay);
-    }
+    _received(code, protocol, bits, bitTime);
     switch433.resetAvailable();
   }
   if (received_forward != received_in && !forwarders.empty()) {
@@ -244,11 +240,11 @@ void Iotsa433ReceiveMod::loop() {
   }
 }
 
-void Iotsa433ReceiveMod::_received(uint32_t code, int protocol, int bitLength, int delay) {
+void Iotsa433ReceiveMod::_received(uint32_t code, int protocol, int bits, int bitTime) {
     received_buffer[received_in].code = code;
     received_buffer[received_in].protocol = protocol;
-    received_buffer[received_in].bitLength = bitLength;
-    received_buffer[received_in].delay = delay;
+    received_buffer[received_in].bits = bits;
+    received_buffer[received_in].bitTime = bitTime;
     received_buffer[received_in].millis = millis();
     received_in = RB_INC(received_in);
     if (received_in == received_out) received_out = RB_INC(received_out);
@@ -265,7 +261,7 @@ void Iotsa433ReceiveMod::_forward_one() {
   String dipswitches;
   String button;
   String onoff;
-  if( decode433_hema(received_buffer[received_forward].code, 24, dipswitches, button, onoff)) {
+  if( decode433_hema(received_buffer[received_forward].code, received_buffer[received_forward].bits, dipswitches, button, onoff)) {
     brand = "HEMA";
   }
   received_forward = RB_INC(received_forward);
