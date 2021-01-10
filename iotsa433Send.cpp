@@ -9,7 +9,14 @@ int switch433_pin_send = 5;
 #ifdef IOTSA_WITH_WEB
 void
 Iotsa433SendMod::handler() {
-  bool anyChanged = false;
+  int protocol = 1;
+  int bitTime = 300;
+  if (server->hasArg("protocol")) {
+    protocol = server->arg("protocol").toInt();
+  }
+  if (server->hasArg("bitTime")) {
+    bitTime = server->arg("bitTime").toInt();
+  }
   if (server->hasArg("tristate")) {
     // Send tristate command
     String tristate = server->arg("tristate");
@@ -48,18 +55,24 @@ Iotsa433SendMod::handler() {
   }
   String message = "<html><head><title>433MHz sender module</title></head><body><h1>433 MHz sender module</h1>";
 
-  message += "<h2>Send Command</h2><form method='get'>";
-  message += "Dipswitches: <input name='dipswitches'><br>";
-  message += "<i>(example: 01011, how DIP switches on device are set)</i><br>";
-  message += "Button: <input name='button'><br>";
-  message += "<i>(example: A, label on remote control button, or 01000, binary bitpattern)</i><br>";
-  message += "On/Off: <input name='onoff'><br>";
-  message += "<i>(example: on or off)</i><br>";
-  message += "<input type='submit' value='Send Switch Command'></form>";
+  message += "<h2>Send Command</h2><form method='get'><table>";
+  message += "<tr><td>Dipswitches:</td><td><input name='dipswitches'></td>";
+  message += "<td><i>(example: 01011, how DIP switches on device are set)</i></td></tr>";
+  message += "<tr><td>Button:</td><td><input name='button'></td>";
+  message += "<td><i>(example: A, label on remote control button, or 01000, binary bitpattern)</i></td></tr>";
+  message += "<tr><td>On/Off:</td><td><input name='onoff'></td>";
+  message += "<td><i>(example: on or off)</i><br></td></tr>";
+  message += "<tr><td>Protocol:</td><td><input name='protocol' value='1'></td>";
+  message += "<td><i>(433 bit protocol, usually 1, see receiver dump)</i><br></td></tr>";
+  message += "<tr><td>BitTime:</td><td><input name='bitTime' value='300'></td>";
+  message += "<td><i>(pulse duration in microseconds, see receiver dump)</i><br></td></tr>";
+  message += "<tr><td></td><td><input type='submit' value='Send Switch Command'></td></tr></table></form>";
 
   message += "<h2>Send Geek-style command</h2><form method='get'>";
-  message += "TriState command: <input name='tristate'><br>";
+  message += "TriState command: <input name='tristate'>";
   message += "<i>(example: 00000FFF0FF0)</i><br>";
+  message += "Protocol: <input name='protocol' value='1'><br>";
+  message += "BitTime: <input name='bitTime' value='300'><br>";
   message += "<input type='submit' value='Send TriState'></form>";
 
   server->send(200, "text/html", message);
