@@ -103,17 +103,18 @@ Iotsa433ReceiveMod::handler() {
   message += "<br><input type='submit' name='command' value='Add'></form>";
   // Operation
   message += "<h2>Recently received codes</h2>";
-  message += "<table><tr><th>ms ago</th><th>decimal</th><th>protocol</th><th>bits</th><th>bitTime</th><th>tristate</th><th>brand</th><th>dip switches</th><th>button</th><th>on/off</th></tr>";
+  message += "<table><tr><th>ms ago</th><th>decimal</th><th>binary</th><th>protocol</th><th>bits</th><th>bitTime</th><th>tristate</th><th>brand</th><th>dip switches</th><th>button</th><th>on/off</th></tr>";
   for(int i = received_out; i != received_in; i = RB_INC(i)) {
     message += "<tr><td>"  + String(millis()-received_buffer[i].millis) + "</td>";
     message += "<td>" + String(received_buffer[i].code) + "</td>";
+    message += "<td>" + String(received_buffer[i].code, BIN) + "</td>";
     message += "<td>" + String(received_buffer[i].protocol) + "</td>";
     message += "<td>" + String(received_buffer[i].bits) + "</td>";
     message += "<td>" + String(received_buffer[i].bitTime) + "</td>";
     message += "<td>";
     String tri_buf;
-    if (decode433_tristate(received_buffer[i].code, 24, tri_buf)) {
-      message += tri_buf;
+    if (decode433_tristate(received_buffer[i].code, received_buffer[i].bits, tri_buf)) {
+      message += "<code>" + tri_buf + "</code>";
     } else {
       message += "not decodable";
     }
@@ -121,19 +122,31 @@ Iotsa433ReceiveMod::handler() {
     String dip_buf;
     String button_buf;
     String onoff_buf;
-    bool is_hema = decode433_hema(received_buffer[i].code, 24, dip_buf, button_buf, onoff_buf);
-    if (is_hema) {
+    if (decode433_hema(received_buffer[i].code, received_buffer[i].bits, dip_buf, button_buf, onoff_buf)) {
       message += "<td>HEMA</td>";
+      message += "</td><td>";
+      message += dip_buf;
+      message += "</td><td>";
+      message += button_buf;
+      message += "</td><td>";
+      message += onoff_buf;
+      message += "</td></tr>";
+    } else if (decode433_elro(received_buffer[i].code, received_buffer[i].bits, dip_buf, button_buf, onoff_buf)) {
+      message += "<td>ELRO</td>";
+      message += "</td><td>";
+      message += dip_buf;
+      message += "</td><td>";
+      message += button_buf;
+      message += "</td><td>";
+      message += onoff_buf;
+      message += "</td></tr>";
     } else {
       message += "<td>unknown</td>";
+      message += "</td><td>";
+      message += "</td><td>";
+      message += "</td><td>";
+      message += "</td></tr>";
     }
-    message += "</td><td>";
-    message += dip_buf;
-    message += "</td><td>";
-    message += button_buf;
-    message += "</td><td>";
-    message += onoff_buf;
-    message += "</td></tr>";
   }
   message += "</table>";
   server->send(200, "text/html", message);
@@ -166,7 +179,8 @@ bool Iotsa433ReceiveMod::getHandler(const char *path, JsonObject& reply) {
     fRv["bits"] = millis() - received_buffer[i].bits;
     fRv["bitTime"] = millis() - received_buffer[i].bitTime;
     String tri_buf;
-    if (decode433_tristate(received_buffer[i].code, 24, tri_buf)) fRv["tristate"] = tri_buf;
+    if (decode433_tristate(received_buffer[i].code, received_buffer[i].bits, tri_buf)) fRv["tristate"] = tri_buf;
+    fRv["binary"] = String(received_buffer[i].code, BIN);
     String dip_buf;
     String button_buf;
     String onoff_buf;
@@ -232,6 +246,15 @@ void Iotsa433ReceiveMod::loop() {
     int protocol = switch433.getReceivedProtocol();
     int bitTime = switch433.getReceivedDelay();
     IFDEBUG IotsaSerial.printf("433recv: ts=%lu msg=0x%x\n", millis(), code);
+    IFDEBUG {
+      unsigned int *raw = switch433.getReceivedRawdata();
+      IotsaSerial.printf("433recv raw %d bits: ", bits);
+      for(int i=0; i<2*bits; i++) {
+        IotsaSerial.print(raw[i]);
+        IotsaSerial.print(" ");
+      }
+      IotsaSerial.println();
+    }
     _received(code, protocol, bits, bitTime);
     switch433.resetAvailable();
   }
@@ -252,7 +275,7 @@ void Iotsa433ReceiveMod::_received(uint32_t code, int protocol, int bits, int bi
 
 void Iotsa433ReceiveMod::_forward_one() {
   String tristate;
-  if (!decode433_tristate(received_buffer[received_forward].code, 24, tristate)) {
+  if (!decode433_tristate(received_buffer[received_forward].code, received_buffer[received_forward].bits, tristate)) {
     IotsaSerial.println("433recv: ignore non-tristate code");
     received_forward = RB_INC(received_forward);
     return;

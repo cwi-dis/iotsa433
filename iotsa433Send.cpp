@@ -24,6 +24,13 @@ Iotsa433SendMod::handler() {
     server->send(200, "text/plain", "OK");
     return;
   }
+  if (server->hasArg("binary")) {
+    // Send binary command
+    String binary = server->arg("binary");
+    switch433.send(binary.c_str());
+    server->send(200, "text/plain", "OK");
+    return;
+  }
   if (server->hasArg("onoff")) {
     // Send dipswitches, button, onoff command
     String onoff = server->arg("onoff");
@@ -74,6 +81,13 @@ Iotsa433SendMod::handler() {
   message += "Protocol: <input name='protocol' value='1'><br>";
   message += "BitTime: <input name='bitTime' value='300'><br>";
   message += "<input type='submit' value='Send TriState'></form>";
+
+  message += "<h2>Send binary command</h2><form method='get'>";
+  message += "Binary command: <input name='binary'>";
+  message += "<i>(example: 10100000000000000010100)</i><br>";
+  message += "Protocol: <input name='protocol' value='1'><br>";
+  message += "BitTime: <input name='bitTime' value='300'><br>";
+  message += "<input type='submit' value='Send binary'></form>";
 
   server->send(200, "text/html", message);
 }

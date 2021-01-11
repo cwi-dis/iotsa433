@@ -67,6 +67,10 @@ bool decode433_hema(uint32_t dec, int bitLength, String& dip, String& button, St
   return ok;
 }
 
+bool decode433_elro(uint32_t dec, int bitLength, String& dip, String& button, String& onoff) {
+  return false;
+}
+
 static const char* bin2tristate(const char* bin) {
   static char returnValue[50];
   int pos = 0;
