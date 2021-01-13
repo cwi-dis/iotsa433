@@ -27,6 +27,8 @@ Iotsa433SendMod::handler() {
   if (server->hasArg("binary")) {
     // Send binary command
     String binary = server->arg("binary");
+    switch433.setProtocol(protocol, bitTime);
+    if (binary.length() & 1) binary = "0" + binary;
     switch433.send(binary.c_str());
     server->send(200, "text/plain", "OK");
     return;
@@ -41,6 +43,7 @@ Iotsa433SendMod::handler() {
     }
     String dipswitches = server->arg("dipswitches");
     String button = server->arg("button");
+    switch433.setProtocol(protocol, bitTime);
     if (button == "A" || button == "B" || button == "C" || button == "D" || button == "E") {
       // Hema-style device
       int buttonNum = button[0] - 'A';
@@ -84,7 +87,7 @@ Iotsa433SendMod::handler() {
 
   message += "<h2>Send binary command</h2><form method='get'>";
   message += "Binary command: <input name='binary'>";
-  message += "<i>(example: 10100000000000000010100)</i><br>";
+  message += "<i>(example: 010100000000000000010100)</i><br>";
   message += "Protocol: <input name='protocol' value='1'><br>";
   message += "BitTime: <input name='bitTime' value='300'><br>";
   message += "<input type='submit' value='Send binary'></form>";

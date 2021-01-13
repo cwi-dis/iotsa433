@@ -161,6 +161,7 @@ String Iotsa433ReceiveMod::info() {
 void Iotsa433ReceiveMod::setup() {
   configLoad();
   switch433.enableReceive(switch433_pin_receive);
+  switch433.setReceiveTolerance(30);
 }
 
 #ifdef IOTSA_WITH_API
