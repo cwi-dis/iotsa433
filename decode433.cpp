@@ -83,7 +83,7 @@ static const char* bin2tristate(const char* bin) {
     } else if (bin[pos]=='0' && bin[pos+1]=='1') {
       returnValue[pos2] = 'F';
     } else {
-      return "not applicable";
+      return NULL;
     }
     pos = pos+2;
     pos2++;

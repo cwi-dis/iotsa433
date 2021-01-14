@@ -28,7 +28,10 @@ Iotsa433SendMod::handler() {
     // Send binary command
     String binary = server->arg("binary");
     switch433.setProtocol(protocol, bitTime);
-    if (binary.length() & 1) binary = "0" + binary;
+    if (binary.length() & 1) {
+      server->send(400, "text/plain", "bad binary value");
+      return;
+    }
     switch433.send(binary.c_str());
     server->send(200, "text/plain", "OK");
     return;
