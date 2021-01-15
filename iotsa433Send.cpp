@@ -30,7 +30,12 @@ bool Iotsa433SendMod::_send_tristate(int protocol, int bittime, String tristate)
 }
 
 bool Iotsa433SendMod::_send_brand(int protocol, int bittime, String brand, String dipswitches, String button, bool onoff) {
-  if (protocol < 0) protocol = 1; // Default protocol
+  if (protocol < 0) {
+    protocol = 1; // Default protocol
+#ifdef WITH_ELRO_FLAMINGO
+    if (brand == "ELRO") protocol = 13;
+#endif
+  }
   if (bittime > 0) {
     switch433.setProtocol(protocol, bittime); // Set protocol, override bittime
   } else {
@@ -129,7 +134,7 @@ Iotsa433SendMod::handler() {
       return;
     }
 
-    if (_send_brand(protocol, bitTime, brand, dipswitches, button, onoff))  {
+    if (_send_brand(protocol, bitTime, brand, dipswitches, button, on))  {
       server->send(200, "text/plain", "OK");
     } else {
       server->send(400, "text/plain", "Bad command");

@@ -3,6 +3,8 @@
 #include <RCSwitch.h>
 #include "decode433.h"
 
+#undef _debug_print_raw_codes
+
 RCSwitch switch433; // Note: shared variable with Iotsa433Send
 int switch433_pin_receive = 4;
 
@@ -274,7 +276,8 @@ void Iotsa433ReceiveMod::loop() {
     int protocol = switch433.getReceivedProtocol();
     int bitTime = switch433.getReceivedDelay();
     IFDEBUG IotsaSerial.printf("433recv: ts=%lu msg=0x%x\n", millis(), code);
-    IFDEBUG {
+#ifdef _debug_print_raw_codes
+    {
       unsigned int *raw = switch433.getReceivedRawdata();
       IotsaSerial.printf("433recv raw %d bits: ", bits);
       for(int i=0; i<2*bits; i++) {
@@ -283,6 +286,7 @@ void Iotsa433ReceiveMod::loop() {
       }
       IotsaSerial.println();
     }
+#endif
     _received(code, protocol, bits, bitTime);
     switch433.resetAvailable();
   }
