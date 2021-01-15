@@ -3,6 +3,7 @@
 static const char* bin2tristate(const char* bin);
 static char * dec2binWzerofill(unsigned long Dec, unsigned int bitLength);
 
+#ifdef WITH_HEMA
 bool decode433_hema(uint32_t dec, int bitLength, String& dip, String& button, String& onoff) {
   static char stringbuf[6];
   if (bitLength != 24) return false;
@@ -66,10 +67,17 @@ bool decode433_hema(uint32_t dec, int bitLength, String& dip, String& button, St
   }
   return ok;
 }
+#endif // WITH_HEMA
 
+#ifdef WITH_ELRO_FLAMINGO
 bool decode433_elro(uint32_t dec, int bitLength, String& dip, String& button, String& onoff) {
   return false;
 }
+
+String encode433_elro(String dipswitches, String button, bool onoff) {
+  return "";
+}
+#endif // WITH_ELRO_FLAMINGO
 
 static const char* bin2tristate(const char* bin) {
   static char returnValue[50];

@@ -22,6 +22,9 @@ protected:
   void configLoad() override;
   void configSave() override;
   void handler();
+  bool _send_binary(int protocol, int bittime, String code);
+  bool _send_tristate(int protocol, int bittime, String code);
+  bool _send_brand(int protocol, int bittime, String brand, String dipswitches, String button, bool onoff);
   String argument;
 };
 

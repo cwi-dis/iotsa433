@@ -128,6 +128,7 @@ Iotsa433ReceiveMod::handler() {
     String dip_buf;
     String button_buf;
     String onoff_buf;
+  #ifdef WITH_HEMA
     if (decode433_hema(received_buffer[i].code, received_buffer[i].bits, dip_buf, button_buf, onoff_buf)) {
       message += "<td>HEMA</td>";
       message += "</td><td>";
@@ -137,7 +138,10 @@ Iotsa433ReceiveMod::handler() {
       message += "</td><td>";
       message += onoff_buf;
       message += "</td></tr>";
-    } else if (decode433_elro(received_buffer[i].code, received_buffer[i].bits, dip_buf, button_buf, onoff_buf)) {
+    } else 
+#endif
+#ifdef WITH_ELRO_FLAMINGO
+    if (decode433_elro(received_buffer[i].code, received_buffer[i].bits, dip_buf, button_buf, onoff_buf)) {
       message += "<td>ELRO</td>";
       message += "</td><td>";
       message += dip_buf;
@@ -146,7 +150,9 @@ Iotsa433ReceiveMod::handler() {
       message += "</td><td>";
       message += onoff_buf;
       message += "</td></tr>";
-    } else {
+    } else 
+#endif
+    {
       message += "<td>unknown</td>";
       message += "</td><td>";
       message += "</td><td>";
@@ -191,6 +197,7 @@ bool Iotsa433ReceiveMod::getHandler(const char *path, JsonObject& reply) {
     String dip_buf;
     String button_buf;
     String onoff_buf;
+#ifdef WITH_HEMA
     bool is_hema = decode433_hema(received_buffer[i].code, 24, dip_buf, button_buf, onoff_buf);
     if (is_hema) {
       fRv["brand"] = "HEMA";
@@ -198,6 +205,8 @@ bool Iotsa433ReceiveMod::getHandler(const char *path, JsonObject& reply) {
       fRv["button"] = button_buf;
       fRv["onoff"] = onoff_buf;
     }
+#endif
+#ifdef WITH_ELRO_FLAMINGO
     bool is_elro = decode433_elro(received_buffer[i].code, 24, dip_buf, button_buf, onoff_buf);
     if (is_elro) {
       fRv["brand"] = "ELRO";
@@ -205,6 +214,7 @@ bool Iotsa433ReceiveMod::getHandler(const char *path, JsonObject& reply) {
       fRv["button"] = button_buf;
       fRv["onoff"] = onoff_buf;
     }
+#endif
   }
   return true;
 }
@@ -302,9 +312,16 @@ void Iotsa433ReceiveMod::_forward_one() {
   String dipswitches;
   String button;
   String onoff;
+#ifdef WITH_HEMA
   if( decode433_hema(received_buffer[received_forward].code, received_buffer[received_forward].bits, dipswitches, button, onoff)) {
     brand = "HEMA";
   }
+#endif
+#ifdef WITH_ELRO_FLAMINGO
+  if( decode433_elro(received_buffer[received_forward].code, received_buffer[received_forward].bits, dipswitches, button, onoff)) {
+    brand = "ELRO";
+  }
+#endif
   received_forward = RB_INC(received_forward);
 
   for (auto it: forwarders) {

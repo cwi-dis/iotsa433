@@ -2,70 +2,148 @@
 #include "iotsa433Send.h"
 #include "iotsaConfigFile.h"
 #include <RCSwitch.h>
+#include "decode433.h"
 
 extern RCSwitch switch433; // Note: shared variable with Iotsa433Receive
 int switch433_pin_send = 5;
 
-#ifdef IOTSA_WITH_WEB
-void
-Iotsa433SendMod::handler() {
-  int protocol = 1;
-  int bitTime = 300;
-  if (server->hasArg("protocol")) {
-    protocol = server->arg("protocol").toInt();
+bool Iotsa433SendMod::_send_binary(int protocol, int bittime, String binary) {
+  if (protocol < 0) protocol = 1; // Default protocol
+  if (bittime > 0) {
+    switch433.setProtocol(protocol, bittime); // Set protocol, override bittime
+  } else {
+    switch433.setProtocol(protocol); // Set protocol, use default bittime
   }
-  if (server->hasArg("bitTime")) {
-    bitTime = server->arg("bitTime").toInt();
+  switch433.send(binary.c_str());
+  return true;
+}
+
+bool Iotsa433SendMod::_send_tristate(int protocol, int bittime, String tristate) {
+  if (protocol < 0) protocol = 1; // Default protocol
+  if (bittime > 0) {
+    switch433.setProtocol(protocol, bittime); // Set protocol, override bittime
+  } else {
+    switch433.setProtocol(protocol); // Set protocol, use default bittime
   }
-  if (server->hasArg("tristate")) {
-    // Send tristate command
-    String tristate = server->arg("tristate");
-    switch433.sendTriState(tristate.c_str());
-    server->send(200, "text/plain", "OK");
-    return;
+  switch433.sendTriState(tristate.c_str());
+  return true;
+}
+
+bool Iotsa433SendMod::_send_brand(int protocol, int bittime, String brand, String dipswitches, String button, bool onoff) {
+  if (protocol < 0) protocol = 1; // Default protocol
+  if (bittime > 0) {
+    switch433.setProtocol(protocol, bittime); // Set protocol, override bittime
+  } else {
+    switch433.setProtocol(protocol); // Set protocol, use default bittime
   }
-  if (server->hasArg("binary")) {
-    // Send binary command
-    String binary = server->arg("binary");
-    switch433.setProtocol(protocol, bitTime);
-    if (binary.length() & 1) {
-      server->send(400, "text/plain", "bad binary value");
-      return;
-    }
+#ifdef WITH_HEMA
+  if (brand == "HEMA") brand = ""; // default behaviour
+#endif
+#ifdef WITH_ELRO_FLAMINGO
+  if (brand == "ELRO") {
+    String binary = encode433_elro(dipswitches, button, onoff);
     switch433.send(binary.c_str());
-    server->send(200, "text/plain", "OK");
-    return;
+    return true;
   }
-  if (server->hasArg("onoff")) {
-    // Send dipswitches, button, onoff command
-    String onoff = server->arg("onoff");
-    bool on = (onoff == "on" || onoff == "1");
-    if (!on && ! (onoff == "off" || onoff == "0" || onoff == "")) {
-      server->send(400, "text/plain", "Bad onoff value");
-      return;
-    }
-    String dipswitches = server->arg("dipswitches");
-    String button = server->arg("button");
-    switch433.setProtocol(protocol, bitTime);
+#endif
+  if (brand == "") {
+    // Default treatment. We support ABCDE or 12345, otherwise button is a bitstring.
+    int buttonNum = -1;
     if (button == "A" || button == "B" || button == "C" || button == "D" || button == "E") {
       // Hema-style device
-      int buttonNum = button[0] - 'A';
-      if (on) {
+      buttonNum = button[0] - 'A';
+    }
+    if (button == "0" || button == "1" || button == "2" || button == "3" || button == "4" || button == "5") {
+      // Numbered buttons
+      buttonNum = button[0] - '0';
+    }
+    if (buttonNum >= 0) {
+      if (onoff) {
         switch433.switchOn(dipswitches.c_str(), buttonNum);
       } else {
         switch433.switchOff(dipswitches.c_str(), buttonNum);
       }
     } else {
       // Presume button is a mask-style string
-      if (on) {
+      if (onoff) {
         switch433.switchOn(dipswitches.c_str(), button.c_str());
       } else {
         switch433.switchOff(dipswitches.c_str(), button.c_str());
       }
     }
-    server->send(200, "text/plain", "OK");
+    return true;
+  }
+  // Unsupported brand.
+  return false;
+}
+
+#ifdef IOTSA_WITH_WEB
+void
+Iotsa433SendMod::handler() {
+  int protocol = -1;
+  int bitTime = -1;
+  if (server->hasArg("protocol")) {
+    protocol = server->arg("protocol").toInt();
+  }
+  if (server->hasArg("bitTime")) {
+    bitTime = server->arg("bitTime").toInt();
+  }
+
+  if (server->hasArg("tristate")) {
+    // Send tristate command
+    String tristate = server->arg("tristate");
+    if (_send_tristate(protocol, bitTime, tristate)) {
+      server->send(200, "text/plain", "OK");
+    } else {
+      server->send(400, "text/plain", "Bad tristate value");
+    }
     return;
   }
+
+  if (server->hasArg("binary")) {
+    // Send binary command
+    String binary = server->arg("binary");
+    if (_send_binary(protocol, bitTime, binary)) {
+      server->send(200, "text/plain", "OK");
+    } else {
+      server->send(400, "text/plain", "Bad binary value");
+    }
+    return;
+  }
+
+  String brand;
+  if (server->hasArg("brand")) brand = server->arg("brand");
+  int nArgs = 0;
+
+  if (server->hasArg("onoff")) nArgs++;
+  if (server->hasArg("dipswitches")) nArgs++;
+  if (server->hasArg("button")) nArgs++;
+  if (nArgs == 3) {
+    // We have all arguments. Send command.
+    String dipswitches = server->arg("dipswitches");
+    String button = server->arg("button");
+    String onoff = server->arg("onoff");
+    bool on = (onoff == "on" || onoff == "1");
+    if (!on && ! (onoff == "off" || onoff == "0" || onoff == "")) {
+      server->send(400, "text/plain", "Bad onoff value");
+      return;
+    }
+
+    if (_send_brand(protocol, bitTime, brand, dipswitches, button, onoff))  {
+      server->send(200, "text/plain", "OK");
+    } else {
+      server->send(400, "text/plain", "Bad command");
+    }
+    return;
+  } else
+  if (nArgs != 0) {
+    // Some but not all arguments. Error.
+    server->send(400, "text/plain", "Must have all of onoff, dipswitches, button");
+    return;
+  }
+  //
+  // No command found. Present form for user input.
+  //
   String message = "<html><head><title>433MHz sender module</title></head><body><h1>433 MHz sender module</h1>";
 
   message += "<h2>Send Command</h2><form method='get'><table>";
