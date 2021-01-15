@@ -30,7 +30,7 @@ bool Iotsa433SendMod::_send_tristate(int protocol, int bittime, String tristate)
 }
 
 bool Iotsa433SendMod::_send_brand(int protocol, int bittime, String brand, String dipswitches, String button, bool onoff) {
-  if (protocol < 0) {
+  if (protocol <= 0) {
     protocol = 1; // Default protocol
 #ifdef WITH_ELRO_FLAMINGO
     if (brand == "ELRO") protocol = 13;

@@ -306,16 +306,12 @@ void Iotsa433ReceiveMod::_received(uint32_t code, int protocol, int bits, int bi
 }
 
 void Iotsa433ReceiveMod::_forward_one() {
-  String tristate;
-  if (!decode433_tristate(received_buffer[received_forward].code, received_buffer[received_forward].bits, tristate)) {
-    IotsaSerial.println("433recv: ignore non-tristate code");
-    received_forward = RB_INC(received_forward);
-    return;
-  }
   String brand = "unknown";
   String dipswitches;
   String button;
   String onoff;
+  String tristate;
+  (void)decode433_tristate(received_buffer[received_forward].code, received_buffer[received_forward].bits, tristate);
 #ifdef WITH_HEMA
   if( decode433_hema(received_buffer[received_forward].code, received_buffer[received_forward].bits, dipswitches, button, onoff)) {
     brand = "HEMA";
