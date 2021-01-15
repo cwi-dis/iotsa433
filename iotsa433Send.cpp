@@ -147,6 +147,8 @@ Iotsa433SendMod::handler() {
   String message = "<html><head><title>433MHz sender module</title></head><body><h1>433 MHz sender module</h1>";
 
   message += "<h2>Send Command</h2><form method='get'><table>";
+  message += "<tr><td>Brand:</td><td><input name='brand'></td>";
+  message += "<td><i>(example: HEMA, ELRO, empty)</i></td></tr>";
   message += "<tr><td>Dipswitches:</td><td><input name='dipswitches'></td>";
   message += "<td><i>(example: 01011, how DIP switches on device are set)</i></td></tr>";
   message += "<tr><td>Button:</td><td><input name='button'></td>";
