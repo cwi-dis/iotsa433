@@ -1,5 +1,6 @@
 #include "iotsa.h"
 #include "iotsa433Receive.h"
+#include "iotsa433Telegram.h"
 #include <RCSwitch.h>
 #include "decode433.h"
 
@@ -8,26 +9,17 @@
 RCSwitch switch433; // Note: shared variable with Iotsa433Send
 int switch433_pin_receive = 4;
 
-struct received {
-  uint32_t millis;
-  uint32_t code;
-  int protocol;
-  int bits;
-  int bitTime;
-};
-
+//
+// We maintain a static circular buffer of received telegrams
+// (expected to be more efficient than C++ data structures)
+//
 #define RB_SIZE 16
 #define RB_INC(x) (((x)+1) % RB_SIZE)
-static struct received received_buffer[RB_SIZE];
+static Iotsa433Telegram received_buffer[RB_SIZE];
 static int received_in = 0;
 static int received_out = 0;
 static int received_forward = 0;
 
-static String _int2bin(int value, int bits) {
-  String rv = String(value, BIN);
-  while (rv.length() != (unsigned)bits) rv = "0" + rv;
-  return rv;
-}
 
 bool Iotsa433ReceiveMod::_addForwarder(Iotsa433ReveiveForwarder& newForwarder) {
   forwarders.push_back(newForwarder);
@@ -75,15 +67,6 @@ Iotsa433ReceiveMod::handler() {
 
   String message = "<html><head><title>433 MHz receiver module</title><style>table, th, td {border: 1px solid black;padding:5px;border-collapse: collapse;}</style></head><body><h1>433MHz receiver module</h1>";
   // Configuration
-#if 0
-    String url; // URL to send a request to
-    String tristate; // if non-empty, only apply to this tri-state code
-    String brand; // if non-empty, only apply to switches of this brand
-    String dipswitches; // if non-empty only apply to switch with this dip-switch selection
-    String button;  // if non-empty only apply to this button name
-    String onoff; // if non-empty only apply to this on/off setting
-    bool parameters;  // if True, add URL parameters for each parameter/value
-#endif
   message += "<h2>Configuration</h2><h3>Defined forwarders</h3>";
   message += "<table><tr><th>index</th>";
   Iotsa433ReveiveForwarder::formHandlerTH(message);
@@ -111,56 +94,12 @@ Iotsa433ReceiveMod::handler() {
   message += "<br><input type='submit' name='command' value='Add'></form>";
   // Operation
   message += "<h2>Recently received codes</h2>";
-  message += "<table><tr><th>seconds ago</th><th>decimal</th><th>binary</th><th>protocol</th><th>bits</th><th>bitTime</th><th>tristate</th><th>brand</th><th>dip switches</th><th>button</th><th>on/off</th></tr>";
+  message += "<table><tr>";
+  Iotsa433Telegram::formHandlerTH(message);
   for(int i = received_out; i != received_in; i = RB_INC(i)) {
-    message += "<tr><td>"  + String((millis()-received_buffer[i].millis)/1000.0) + "</td>";
-    message += "<td>" + String(received_buffer[i].code) + "</td>";
-    message += "<td>" + _int2bin(received_buffer[i].code, received_buffer[i].bits) + "</td>";
-    message += "<td>" + String(received_buffer[i].protocol) + "</td>";
-    message += "<td>" + String(received_buffer[i].bits) + "</td>";
-    message += "<td>" + String(received_buffer[i].bitTime) + "</td>";
-    message += "<td>";
-    String tri_buf;
-    if (decode433_tristate(received_buffer[i].code, received_buffer[i].bits, tri_buf)) {
-      message += "<code>" + tri_buf + "</code>";
-    } else {
-      message += "not decodable";
-    }
-    message += "</td>";
-    String dip_buf;
-    String button_buf;
-    String onoff_buf;
-  #ifdef WITH_HEMA
-    if (decode433_hema(received_buffer[i].code, received_buffer[i].bits, dip_buf, button_buf, onoff_buf)) {
-      message += "<td>HEMA</td>";
-      message += "</td><td>";
-      message += dip_buf;
-      message += "</td><td>";
-      message += button_buf;
-      message += "</td><td>";
-      message += onoff_buf;
-      message += "</td></tr>";
-    } else 
-#endif
-#ifdef WITH_ELRO_FLAMINGO
-    if (decode433_elro(received_buffer[i].code, received_buffer[i].bits, dip_buf, button_buf, onoff_buf)) {
-      message += "<td>ELRO</td>";
-      message += "</td><td>";
-      message += dip_buf;
-      message += "</td><td>";
-      message += button_buf;
-      message += "</td><td>";
-      message += onoff_buf;
-      message += "</td></tr>";
-    } else 
-#endif
-    {
-      message += "<td>unknown</td>";
-      message += "</td><td>";
-      message += "</td><td>";
-      message += "</td><td>";
-      message += "</td></tr>";
-    }
+    message += "<tr>";
+    received_buffer[i].formHandlerTD(message);
+    message += "</tr>";
   }
   message += "</table>";
   server->send(200, "text/html", message);
@@ -188,35 +127,8 @@ bool Iotsa433ReceiveMod::getHandler(const char *path, JsonObject& reply) {
   JsonArray rvReceived = reply.createNestedArray("received");
   for(int i = received_out; i != received_in; i = RB_INC(i)) {
     JsonObject fRv = rvReceived.createNestedObject();
-    
-    fRv["time"] = (millis() - received_buffer[i].millis)/1000.0;
-    fRv["protocol"] = received_buffer[i].protocol;
-    fRv["bits"] = received_buffer[i].bits;
-    fRv["bitTime"] = received_buffer[i].bitTime;
-    String tri_buf;
-    if (decode433_tristate(received_buffer[i].code, received_buffer[i].bits, tri_buf)) fRv["tristate"] = tri_buf;
-    fRv["binary"] = _int2bin(received_buffer[i].code, received_buffer[i].bits);
-    String dip_buf;
-    String button_buf;
-    String onoff_buf;
-#ifdef WITH_HEMA
-    bool is_hema = decode433_hema(received_buffer[i].code, 24, dip_buf, button_buf, onoff_buf);
-    if (is_hema) {
-      fRv["brand"] = "HEMA";
-      fRv["dipswitches"] = dip_buf;
-      fRv["button"] = button_buf;
-      fRv["onoff"] = onoff_buf;
-    }
-#endif
-#ifdef WITH_ELRO_FLAMINGO
-    bool is_elro = decode433_elro(received_buffer[i].code, 24, dip_buf, button_buf, onoff_buf);
-    if (is_elro) {
-      fRv["brand"] = "ELRO";
-      fRv["dipswitches"] = dip_buf;
-      fRv["button"] = button_buf;
-      fRv["onoff"] = onoff_buf;
-    }
-#endif
+    received_buffer[i].getHandler(fRv);
+
   }
   return true;
 }
@@ -303,6 +215,7 @@ void Iotsa433ReceiveMod::_received(uint32_t code, int protocol, int bits, int bi
     received_buffer[received_in].millis = millis();
     received_in = RB_INC(received_in);
     if (received_in == received_out) received_out = RB_INC(received_out);
+    // Presume we won't overrun received_forward...
 }
 
 void Iotsa433ReceiveMod::_forward_one() {
@@ -311,22 +224,13 @@ void Iotsa433ReceiveMod::_forward_one() {
   String button;
   String onoff;
   String tristate;
-  (void)decode433_tristate(received_buffer[received_forward].code, received_buffer[received_forward].bits, tristate);
-#ifdef WITH_HEMA
-  if( decode433_hema(received_buffer[received_forward].code, received_buffer[received_forward].bits, dipswitches, button, onoff)) {
-    brand = "HEMA";
-  }
-#endif
-#ifdef WITH_ELRO_FLAMINGO
-  if( decode433_elro(received_buffer[received_forward].code, received_buffer[received_forward].bits, dipswitches, button, onoff)) {
-    brand = "ELRO";
-  }
-#endif
+  bool ok = received_buffer[received_forward]._parse(tristate, brand, dipswitches, button, onoff);
   received_forward = RB_INC(received_forward);
+  if (!ok) return;
 
   for (auto it: forwarders) {
     if (it.matches(tristate, brand, dipswitches, button, onoff)) {
-      bool ok = it.send(tristate, brand, dipswitches, button, onoff);
+      ok = it.send(tristate, brand, dipswitches, button, onoff);
       if (!ok) {
         IFDEBUG IotsaSerial.println("forward failed");
       }
