@@ -70,12 +70,98 @@ bool decode433_hema(uint32_t dec, int bitLength, String& dip, String& button, St
 #endif // WITH_HEMA
 
 #ifdef WITH_ELRO_FLAMINGO
+//
+// Flamingo encode/decode copied with mods from https://github.com/windkh/flamingoswitch
+//
+static uint8_t elro_key[17] = { 9, 6, 3, 8, 10, 0, 2, 12, 4, 14, 7, 5, 1, 15, 11, 13, 9 }; //cryptokey 
+static uint8_t elro_ikey[16] = { 5, 12, 6, 2, 8, 11, 1, 10, 3, 0, 4, 14, 7, 15, 9, 13 };  //invers cryptokey (exchanged index & value)
+
 bool decode433_elro(uint32_t dec, int bitLength, String& dip, String& button, String& onoff) {
-  return false;
+    uint8_t mn[7];	// message separated in nibbles
+
+    dec = ((dec << 2) & 0x0FFFFFFF) | ((dec & 0xC000000) >> 0x1a);		//shift 2 bits left & copy bit 27/28 to bit 1/2
+    mn[0] = dec & 0x0000000F;
+    mn[1] = (dec & 0x000000F0) >> 0x4;
+    mn[2] = (dec & 0x00000F00) >> 0x8;
+    mn[3] = (dec & 0x0000F000) >> 0xc;
+    mn[4] = (dec & 0x000F0000) >> 0x10;
+    mn[5] = (dec & 0x00F00000) >> 0x14;
+    mn[6] = (dec & 0x0F000000) >> 0x18;
+
+    mn[6] = mn[6] ^ 9;										// no decryption
+
+    //XOR decryption 2 rounds
+    for (uint8_t r = 0; r <= 1; r++)
+    {														// 2 decryption rounds
+        for (uint8_t i = 5; i >= 1; i--)
+        {													// decrypt 4 nibbles
+            mn[i] = ((elro_ikey[mn[i]] - r) & 0x0F) ^ mn[i - 1];	// decrypted with predecessor & key
+        }
+        mn[0] = (elro_ikey[mn[0]] - r) & 0x0F;					//decrypt first nibble
+    }
+
+    //Output decrypted message 
+    //uint32_t in = (~((input >> 2) | (((input & 3) << 0x1a))) << 4);
+    uint16_t receiverId = (uint16_t)mn[0];
+    uint16_t value = (((mn[1] >> 1) & 1) + (mn[6] & 0x7) + ((mn[6] & 0x8) >> 3));
+    uint16_t rollingCode = (mn[1] >> 2);
+    uint16_t transmitterId = (mn[5] << 12) + (mn[4] << 8) + (mn[3] << 4) + (mn[2] << 0);
+    dip = String(transmitterId);
+    button = String(receiverId);
+    onoff = String(value);
 }
 
-String encode433_elro(String dipswitches, String button, bool onoff) {
-  return "";
+String encode433_elro(String dipswitches, String button, int onoff) {
+    uint8_t mn[7];
+    static uint8_t rollingCode;
+    rollingCode = (rollingCode+1) & 0x3;
+    uint8_t receiverId = button.toInt();
+    uint16_t transmitterId = dipswitches.toInt();
+    int value = onoff;
+    mn[0] = receiverId;								// mn[0] = iiiib i=receiver-ID
+    mn[1] = (rollingCode << 2) & 15; 				// 2 lowest bits of rolling-code
+    if (value > 0)
+    {												// ON or OFF
+        mn[1] |= 2;
+    }												// mn[1] = rrs0b r=rolling-code, s=ON/OFF, 0=const 0?
+    mn[2] = transmitterId & 15;						// mn[2..5] = ttttb t=transmitterId in nibbles -> 4x ttttb
+    mn[3] = (transmitterId >> 4) & 15;
+    mn[4] = (transmitterId >> 8) & 15;
+    mn[5] = (transmitterId >> 12) & 15;
+    if (value >= 2 && value <= 9)
+    {												// mn[6] = dpppb d = dim ON/OFF, p=%dim/10 - 1
+        mn[6] = value - 2;							// dim: 0=10%..7=80%
+        mn[6] |= 8;									// dim: ON
+    }
+    else
+    {
+        mn[6] = 0;									// dim: OFF
+    }
+
+    //XOR encryption 2 rounds
+    for (uint8_t r = 0; r <= 1; r++)
+    {												// 2 encryption rounds
+        mn[0] = elro_key[mn[0] - r + 1];					// encrypt first nibble
+        for (uint8_t i = 1; i <= 5; i++)
+        {											// encrypt 4 nibbles
+            mn[i] = elro_key[(mn[i] ^ mn[i - 1]) - r + 1];// crypted with predecessor & key
+        }
+    }
+
+    mn[6] = mn[6] ^ 9;								// no  encryption
+
+	uint32_t msg = 0;								// copy the encrypted nibbles in output buffer
+	msg |= (uint32_t)mn[6] << 0x18;
+	msg |= (uint32_t)mn[5] << 0x14;
+	msg |= (uint32_t)mn[4] << 0x10;
+	msg |= (uint32_t)mn[3] << 0x0c;
+	msg |= (uint32_t)mn[2] << 0x08;
+	msg |= (uint32_t)mn[1] << 0x04;
+	msg |= (uint32_t)mn[0];
+  msg = (msg >> 2) | ((msg & 3) << 0x1a);			// shift 2 bits right & copy lowest 2 bits of cbuf[0] in msg bit 27/28
+  String rv = String(msg, BIN);
+  while (rv.length() < 28) rv = "0" + rv;
+  return rv;
 }
 #endif // WITH_ELRO_FLAMINGO
 

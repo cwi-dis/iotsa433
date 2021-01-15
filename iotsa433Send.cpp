@@ -41,7 +41,7 @@ bool Iotsa433SendMod::_send_brand(int protocol, int bittime, String brand, Strin
 #endif
 #ifdef WITH_ELRO_FLAMINGO
   if (brand == "ELRO") {
-    String binary = encode433_elro(dipswitches, button, onoff);
+    String binary = encode433_elro(dipswitches, button, (int)onoff);
     switch433.send(binary.c_str());
     return true;
   }
