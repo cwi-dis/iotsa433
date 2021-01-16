@@ -183,11 +183,11 @@ void Iotsa433ReceiveMod::configSave() {
 
 void Iotsa433ReceiveMod::loop() {
   if (switch433.available()) {
-    uint32_t code = switch433.getReceivedValue();
+    uint32_t telegram_binary = switch433.getReceivedValue();
     int telegram_bits = switch433.getReceivedBitlength();
     int telegram_protocol = switch433.getReceivedProtocol();
     int telegram_pulsewidth = switch433.getReceivedDelay();
-    IFDEBUG IotsaSerial.printf("433recv: ts=%lu msg=0x%x\n", millis(), code);
+    IFDEBUG IotsaSerial.printf("433recv: ts=%lu msg=0x%x\n", millis(), telegram_binary);
 #ifdef _debug_print_raw_codes
     {
       unsigned int *raw = switch433.getReceivedRawdata();
@@ -199,7 +199,7 @@ void Iotsa433ReceiveMod::loop() {
       IotsaSerial.println();
     }
 #endif
-    _received(code, telegram_protocol, telegram_bits, telegram_pulsewidth);
+    _received(telegram_binary, telegram_protocol, telegram_bits, telegram_pulsewidth);
     switch433.resetAvailable();
   }
   if (received_forward != received_in && !forwarders.empty()) {
@@ -207,8 +207,8 @@ void Iotsa433ReceiveMod::loop() {
   }
 }
 
-void Iotsa433ReceiveMod::_received(uint32_t code, int telegram_protocol, int telegram_bits, int telegram_pulsewidth) {
-    received_buffer[received_in].code = code;
+void Iotsa433ReceiveMod::_received(uint32_t telegram_binary, int telegram_protocol, int telegram_bits, int telegram_pulsewidth) {
+    received_buffer[received_in].telegram_binary = telegram_binary;
     received_buffer[received_in].telegram_protocol = telegram_protocol;
     received_buffer[received_in].telegram_bits = telegram_bits;
     received_buffer[received_in].telegram_pulsewidth = telegram_pulsewidth;

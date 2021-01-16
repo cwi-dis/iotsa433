@@ -22,8 +22,8 @@ protected:
   void configLoad() override;
   void configSave() override;
   void handler();
-  bool _send_binary(int telegram_protocol, int telegram_pulsewidth, String code);
-  bool _send_tristate(int telegram_protocol, int telegram_pulsewidth, String code);
+  bool _send_binary(int telegram_protocol, int telegram_pulsewidth, String telegram_binary);
+  bool _send_tristate(int telegram_protocol, int telegram_pulsewidth, String telegram_binary);
   bool _send_brand(int telegram_protocol, int telegram_pulsewidth, String brand, String group, String appliance, bool state);
   String argument;
 };

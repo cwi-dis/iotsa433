@@ -24,7 +24,7 @@ public:
 
 public:
   String url; // URL to send a request to
-  String telegram_tristate; // if non-empty, only apply to this tri-state code
+  String telegram_tristate; // if non-empty, only apply to this tri-state telegram_binary
   String brand; // if non-empty, only apply to switches of this brand
   String group; // if non-empty only apply to switch with this dip-switch selection
   String appliance;  // if non-empty only apply to this appliance name

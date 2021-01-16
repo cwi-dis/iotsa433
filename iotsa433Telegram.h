@@ -23,7 +23,7 @@ public:
   bool _parse(String& telegram_tristate, String& brand, String& group, String& appliance, String& state);
 public:
   uint32_t millis;
-  uint32_t code;
+  uint32_t telegram_binary;
   int telegram_protocol;
   int telegram_bits;
   int telegram_pulsewidth;
