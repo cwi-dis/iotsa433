@@ -20,13 +20,13 @@ public:
   bool putHandler(const JsonVariant& request) override;
 #endif
 public:
-  bool _parse(String& tristate, String& brand, String& dipswitches, String& button, String& onoff);
+  bool _parse(String& telegram_tristate, String& brand, String& group, String& appliance, String& state);
 public:
   uint32_t millis;
   uint32_t code;
-  int protocol;
-  int bits;
-  int bitTime;
+  int telegram_protocol;
+  int telegram_bits;
+  int telegram_pulsewidth;
 };
 
 #endif // _IOTSA433TELEGRAM_H_

@@ -184,22 +184,22 @@ void Iotsa433ReceiveMod::configSave() {
 void Iotsa433ReceiveMod::loop() {
   if (switch433.available()) {
     uint32_t code = switch433.getReceivedValue();
-    int bits = switch433.getReceivedBitlength();
-    int protocol = switch433.getReceivedProtocol();
-    int bitTime = switch433.getReceivedDelay();
+    int telegram_bits = switch433.getReceivedBitlength();
+    int telegram_protocol = switch433.getReceivedProtocol();
+    int telegram_pulsewidth = switch433.getReceivedDelay();
     IFDEBUG IotsaSerial.printf("433recv: ts=%lu msg=0x%x\n", millis(), code);
 #ifdef _debug_print_raw_codes
     {
       unsigned int *raw = switch433.getReceivedRawdata();
-      IotsaSerial.printf("433recv raw %d bits: ", bits);
-      for(int i=0; i<2*bits; i++) {
+      IotsaSerial.printf("433recv raw %d telegram_bits: ", telegram_bits);
+      for(int i=0; i<2*telegram_bits; i++) {
         IotsaSerial.print(raw[i]);
         IotsaSerial.print(" ");
       }
       IotsaSerial.println();
     }
 #endif
-    _received(code, protocol, bits, bitTime);
+    _received(code, telegram_protocol, telegram_bits, telegram_pulsewidth);
     switch433.resetAvailable();
   }
   if (received_forward != received_in && !forwarders.empty()) {
@@ -207,11 +207,11 @@ void Iotsa433ReceiveMod::loop() {
   }
 }
 
-void Iotsa433ReceiveMod::_received(uint32_t code, int protocol, int bits, int bitTime) {
+void Iotsa433ReceiveMod::_received(uint32_t code, int telegram_protocol, int telegram_bits, int telegram_pulsewidth) {
     received_buffer[received_in].code = code;
-    received_buffer[received_in].protocol = protocol;
-    received_buffer[received_in].bits = bits;
-    received_buffer[received_in].bitTime = bitTime;
+    received_buffer[received_in].telegram_protocol = telegram_protocol;
+    received_buffer[received_in].telegram_bits = telegram_bits;
+    received_buffer[received_in].telegram_pulsewidth = telegram_pulsewidth;
     received_buffer[received_in].millis = millis();
     received_in = RB_INC(received_in);
     if (received_in == received_out) received_out = RB_INC(received_out);
@@ -220,17 +220,17 @@ void Iotsa433ReceiveMod::_received(uint32_t code, int protocol, int bits, int bi
 
 void Iotsa433ReceiveMod::_forward_one() {
   String brand = "unknown";
-  String dipswitches;
-  String button;
-  String onoff;
-  String tristate;
-  bool ok = received_buffer[received_forward]._parse(tristate, brand, dipswitches, button, onoff);
+  String group;
+  String appliance;
+  String state;
+  String telegram_tristate;
+  bool ok = received_buffer[received_forward]._parse(telegram_tristate, brand, group, appliance, state);
   received_forward = RB_INC(received_forward);
   if (!ok) return;
 
   for (auto it: forwarders) {
-    if (it.matches(tristate, brand, dipswitches, button, onoff)) {
-      ok = it.send(tristate, brand, dipswitches, button, onoff);
+    if (it.matches(telegram_tristate, brand, group, appliance, state)) {
+      ok = it.send(telegram_tristate, brand, group, appliance, state);
       if (!ok) {
         IFDEBUG IotsaSerial.println("forward failed");
       }

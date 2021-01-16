@@ -5,35 +5,35 @@
 bool Iotsa433ReveiveForwarder::configLoad(IotsaConfigFileLoad& cf, String& f_name) {
   cf.get(f_name + ".url", url, "");
   if (url == "") return false;
-  cf.get(f_name + ".tristate", tristate, "");
+  cf.get(f_name + ".telegram_tristate", telegram_tristate, "");
   cf.get(f_name + ".brand", brand, "");
-  cf.get(f_name + ".dipswitches", dipswitches, "");
-  cf.get(f_name + ".button", button, "");
-  cf.get(f_name + ".onoff", onoff, "");
+  cf.get(f_name + ".group", group, "");
+  cf.get(f_name + ".appliance", appliance, "");
+  cf.get(f_name + ".state", state, "");
   cf.get(f_name + ".parameters", parameters, false);
   return true;
 }
 
 void Iotsa433ReveiveForwarder::configSave(IotsaConfigFileSave& cf, String& f_name) {
   cf.put(f_name + ".url", url);
-  cf.put(f_name + ".tristate", tristate);
+  cf.put(f_name + ".telegram_tristate", telegram_tristate);
   cf.put(f_name + ".brand", brand);
-  cf.put(f_name + ".dipswitches", dipswitches);
-  cf.put(f_name + ".button", button);
-  cf.put(f_name + ".onoff", onoff);
+  cf.put(f_name + ".group", group);
+  cf.put(f_name + ".appliance", appliance);
+  cf.put(f_name + ".state", state);
   cf.put(f_name + ".parameters", (int)parameters);
 }
 
 void Iotsa433ReveiveForwarder::formHandlerTH(String& message) {
- message += "<th>URL</th><th>tristate</th><th>brand</th><th>dipswitches</th><th>button</th><th>onoff</th><th>parameters?</th>";
+ message += "<th>URL</th><th>telegram_tristate</th><th>brand</th><th>group</th><th>appliance</th><th>state</th><th>parameters?</th>";
 }
 
 void Iotsa433ReveiveForwarder::formHandler(String& message) {
   message += "URL: <input name='url'><br>";
-  message += "Filter on tristate: <input name='tristate'><br>";
+  message += "Filter on telegram_tristate: <input name='telegram_tristate'><br>";
   message += "Filter on brand: <input name='brand'><br>";
-  message += "Filter on dipswitches: <input name='dipswitches'><br>";
-  message += "Filter on onoff: <input name='onoff'><br>";
+  message += "Filter on group: <input name='group'><br>";
+  message += "Filter on state: <input name='state'><br>";
   message += "Add parameters to URL on reception: <input type='checkbox' name='parameters'><br>";
 }
 
@@ -45,15 +45,15 @@ void Iotsa433ReveiveForwarder::formHandlerTD(String& message) {
     message += "<td>";
     message += url;
     message += "</td><td>";
-    message += tristate;
+    message += telegram_tristate;
     message += "</td><td>";
     message += brand;
     message += "</td><td>";
-    message += dipswitches;
+    message += group;
     message += "</td><td>";
-    message += button;
+    message += appliance;
     message += "</td><td>";
-    message += onoff;
+    message += state;
     message += "</td><td>";
     message += parameters;
     message += "</td>";
@@ -63,11 +63,11 @@ void Iotsa433ReveiveForwarder::formHandlerTD(String& message) {
 bool Iotsa433ReveiveForwarder::formArgHandler(IotsaWebServer *server, String f_name) {
   // f_name unused for this object.
   url = server->arg("url"); 
-  tristate = server->arg("tristate"); 
+  telegram_tristate = server->arg("telegram_tristate"); 
   brand = server->arg("brand"); 
-  dipswitches = server->arg("dipswitches"); 
-  button = server->arg("button"); 
-  onoff = server->arg("onoff"); 
+  group = server->arg("group"); 
+  appliance = server->arg("appliance"); 
+  state = server->arg("state"); 
   String parameters = server->arg("parameters"); 
   parameters = parameters != "" && parameters != "0";
   return true;
@@ -77,11 +77,11 @@ bool Iotsa433ReveiveForwarder::formArgHandler(IotsaWebServer *server, String f_n
 #ifdef IOTSA_WITH_API
 void Iotsa433ReveiveForwarder::getHandler(JsonObject& reply) {
   reply["url"] = url;
-  reply["tristate"] = tristate;
+  reply["telegram_tristate"] = telegram_tristate;
   reply["brand"] = brand;
-  reply["dipswitches"] = dipswitches;
-  reply["button"] = button;
-  reply["onoff"] = onoff;
+  reply["group"] = group;
+  reply["appliance"] = appliance;
+  reply["state"] = state;
   reply["parameters"] = parameters;
 }
 
@@ -93,25 +93,25 @@ bool Iotsa433ReveiveForwarder::putHandler(const JsonVariant& request) {
     any = true;
     url = reqObj["url"].as<String>();
   }
-  if (reqObj.containsKey("tristate")) {
+  if (reqObj.containsKey("telegram_tristate")) {
     any = true;
-    tristate = reqObj["tristate"].as<String>();
+    telegram_tristate = reqObj["telegram_tristate"].as<String>();
   }
   if (reqObj.containsKey("brand")) {
     any = true;
     brand = reqObj["brand"].as<String>();
   }
-  if (reqObj.containsKey("dipswitches")) {
+  if (reqObj.containsKey("group")) {
     any = true;
-    dipswitches = reqObj["dipswitches"].as<String>();
+    group = reqObj["group"].as<String>();
   }
-  if (reqObj.containsKey("button")) {
+  if (reqObj.containsKey("appliance")) {
     any = true;
-    button = reqObj["button"].as<String>();
+    appliance = reqObj["appliance"].as<String>();
   }
-  if (reqObj.containsKey("onoff")) {
+  if (reqObj.containsKey("state")) {
     any = true;
-    onoff = reqObj["onoff"].as<String>();
+    state = reqObj["state"].as<String>();
   }
   if (reqObj.containsKey("parameters")) {
     any = true;
@@ -121,20 +121,20 @@ bool Iotsa433ReveiveForwarder::putHandler(const JsonVariant& request) {
 }
 
 #endif
-bool Iotsa433ReveiveForwarder::matches(String& _tristate, String& _brand, String& _dipswitches, String& _button, String& _onoff) {
-  if (tristate != "" && _tristate != tristate) return false;
+bool Iotsa433ReveiveForwarder::matches(String& _tristate, String& _brand, String& _group, String& _appliance, String& _state) {
+  if (telegram_tristate != "" && _tristate != telegram_tristate) return false;
   if (brand != "" && _brand != brand) return false;
-  if (dipswitches != "" && _dipswitches != dipswitches) return false;
-  if (button != "" && _button != button) return false;
-  if (onoff != "" && _onoff != onoff) return false;
+  if (group != "" && _group != group) return false;
+  if (appliance != "" && _appliance != appliance) return false;
+  if (state != "" && _state != state) return false;
   return true;
 }
 
-bool Iotsa433ReveiveForwarder::send(String& _tristate, String& _brand, String& _dipswitches, String& _button, String& _onoff) {
-  // This forwarder applies to this button press.
+bool Iotsa433ReveiveForwarder::send(String& _tristate, String& _brand, String& _group, String& _appliance, String& _state) {
+  // This forwarder applies to this appliance press.
   String _url = url;
   if (parameters) {
-    url += "?tristate=" + _tristate + "&brand=" + _brand + "&dipswitches=" + _dipswitches + "&button=" + _button + "&onoff=" + _onoff;
+    url += "?telegram_tristate=" + _tristate + "&brand=" + _brand + "&group=" + _group + "&appliance=" + _appliance + "&state=" + _state;
   }
   IFDEBUG IotsaSerial.print("433recv: GET ");
   IFDEBUG IotsaSerial.println(url);

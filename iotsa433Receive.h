@@ -20,7 +20,7 @@ public:
 protected:
   bool getHandler(const char *path, JsonObject& reply) override;
   bool putHandler(const char *path, const JsonVariant& request, JsonObject& reply) override;
-  void _received(uint32_t value, int protocol, int bits, int bitTime);
+  void _received(uint32_t value, int telegram_protocol, int telegram_bits, int telegram_pulsewidth);
   void _forward_one();
   void configLoad() override;
   void configSave() override;

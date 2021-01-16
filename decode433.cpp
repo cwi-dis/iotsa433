@@ -7,7 +7,7 @@ static const char* bin2tristate(const char* bin);
 static char * dec2binWzerofill(unsigned long Dec, unsigned int bitLength);
 
 #ifdef WITH_HEMA
-bool decode433_hema(uint32_t dec, int bitLength, String& dip, String& button, String& onoff) {
+bool decode433_hema(uint32_t dec, int bitLength, String& dip, String& appliance, String& state) {
   static char stringbuf[6];
   if (bitLength != 24) return false;
   int i;
@@ -28,45 +28,45 @@ bool decode433_hema(uint32_t dec, int bitLength, String& dip, String& button, St
   dip = String(stringbuf);
   
   // Decode switch number
-  int buttonbits = (dec >> 4) & 0x3ff;
-  switch(buttonbits) {
-  case 0b0001010101: button = "A"; break;
-  case 0b0100010101: button = "B"; break;
-  case 0b0101000101: button = "C"; break;
-  case 0b0101010001: button = "D"; break;
-  case 0b0101010100: button = "E"; break;
+  int appliancebits = (dec >> 4) & 0x3ff;
+  switch(appliancebits) {
+  case 0b0001010101: appliance = "A"; break;
+  case 0b0100010101: appliance = "B"; break;
+  case 0b0101000101: appliance = "C"; break;
+  case 0b0101010001: appliance = "D"; break;
+  case 0b0101010100: appliance = "E"; break;
   default:
     ok = false;
     for(i=4; i>= 0; i--) {
-      switch(buttonbits & 0x3) {
+      switch(appliancebits & 0x3) {
         case 0: stringbuf[i] = '1'; break;
         case 1: stringbuf[i] = '0'; break;
         case 2: stringbuf[i] = 'e'; break;
         case 3: stringbuf[i] = 'f'; break;
       }
-      buttonbits >>= 2;
+      appliancebits >>= 2;
     }
     stringbuf[5] = '\0';
-    button = String(stringbuf);
+    appliance = String(stringbuf);
     break;
   }
   
 
-  int onoffbits = (dec & 0xf);
-  switch(onoffbits) {
-  case 0b0001: onoff = "on"; break;
-  case 0b0100: onoff = "off"; break;
+  int statebits = (dec & 0xf);
+  switch(statebits) {
+  case 0b0001: state = "on"; break;
+  case 0b0100: state = "off"; break;
   default:
     ok = false;
     stringbuf[0] = '0';
     stringbuf[1] = 'x';
-    if (onoffbits < 10) {
-      stringbuf[2] = ('0' + onoffbits);
+    if (statebits < 10) {
+      stringbuf[2] = ('0' + statebits);
     } else {
-      stringbuf[2] = ('a' + onoffbits - 10);
+      stringbuf[2] = ('a' + statebits - 10);
     }
     stringbuf[3] = 0;
-    onoff = stringbuf;
+    state = stringbuf;
   }
   return ok;
 }
@@ -79,7 +79,7 @@ bool decode433_hema(uint32_t dec, int bitLength, String& dip, String& button, St
 static uint8_t elro_key[17] = { 9, 6, 3, 8, 10, 0, 2, 12, 4, 14, 7, 5, 1, 15, 11, 13, 9 }; //cryptokey 
 static uint8_t elro_ikey[16] = { 5, 12, 6, 2, 8, 11, 1, 10, 3, 0, 4, 14, 7, 15, 9, 13 };  //invers cryptokey (exchanged index & value)
 
-bool decode433_elro(uint32_t dec, int bitLength, String& dip, String& button, String& onoff) {
+bool decode433_elro(uint32_t dec, int bitLength, String& dip, String& appliance, String& state) {
   if (bitLength != 28) return false;
   uint8_t mn[7];	// message separated in nibbles
 
@@ -114,21 +114,21 @@ bool decode433_elro(uint32_t dec, int bitLength, String& dip, String& button, St
   IotsaSerial.printf("xxxjack decode_433: receiverID=0x%x, value=0x%x, rollingCode=0x%x, transmitterId=0x%x\n", receiverId, value, rollingCode, transmitterId);
 #endif
   dip = String(transmitterId);
-  button = String(receiverId);
-  onoff = String(value);
+  appliance = String(receiverId);
+  state = String(value);
   return true;
 }
 
-String encode433_elro(String dipswitches, String button, int onoff) {
+String encode433_elro(String group, String appliance, int state) {
 #ifdef decode433_debug_prints
-  IotsaSerial.printf("xxxjack encode_433: dipswitches=%s, button=%s, onoff=%d\n", dipswitches.c_str(), button.c_str(), onoff);
+  IotsaSerial.printf("xxxjack encode_433: group=%s, appliance=%s, state=%d\n", group.c_str(), appliance.c_str(), state);
 #endif
   uint8_t mn[7];
   static uint8_t rollingCode;
   rollingCode = (rollingCode+1) & 0x3;
-  uint8_t receiverId = button.toInt();
-  uint16_t transmitterId = dipswitches.toInt();
-  int value = onoff;
+  uint8_t receiverId = appliance.toInt();
+  uint16_t transmitterId = group.toInt();
+  int value = state;
   mn[0] = receiverId;								// mn[0] = iiiib i=receiver-ID
   mn[1] = (rollingCode << 2) & 15; 				// 2 lowest bits of rolling-code
   if (value > 0)
@@ -176,7 +176,7 @@ String encode433_elro(String dipswitches, String button, int onoff) {
   { 
     String _1, _2, _3; 
     decode433_elro(msg, 28, _1, _2, _3);
-    IotsaSerial.printf("xxxjack deencode_433: dipswitches=%s, button=%s, onoff=%s\n", _1.c_str(), _2.c_str(), _3.c_str());
+    IotsaSerial.printf("xxxjack deencode_433: group=%s, appliance=%s, state=%s\n", _1.c_str(), _2.c_str(), _3.c_str());
   }
 #endif
   return rv;
@@ -226,11 +226,11 @@ static char * dec2binWzerofill(unsigned long Dec, unsigned int bitLength) {
   return bin;
 }
 
-bool decode433_tristate(uint32_t dec, int bitLength, String& tristate) {
+bool decode433_tristate(uint32_t dec, int bitLength, String& telegram_tristate) {
   char *bin_buf = dec2binWzerofill(dec, bitLength);
   if (bin_buf == NULL) return false;
   const char *tri_buf = bin2tristate(bin_buf);
   if (tri_buf == NULL) return false;
-  tristate = String(tri_buf);
+  telegram_tristate = String(tri_buf);
   return true;
   }
