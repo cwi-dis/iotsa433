@@ -21,7 +21,7 @@ static int received_out = 0;
 static int received_forward = 0;
 
 
-bool Iotsa433ReceiveMod::_addForwarder(Iotsa433ReveiveForwarder& newForwarder) {
+bool Iotsa433ReceiveMod::_addForwarder(Iotsa433ReceiveForwarder& newForwarder) {
   forwarders.push_back(newForwarder);
   return true;
 }
@@ -32,7 +32,7 @@ bool Iotsa433ReceiveMod::_delForwarder(int index) {
 }
 
 bool Iotsa433ReceiveMod::_swapForwarder(int oldIndex, int newIndex) {
-  Iotsa433ReveiveForwarder tmp = forwarders[oldIndex];
+  Iotsa433ReceiveForwarder tmp = forwarders[oldIndex];
   forwarders[oldIndex] = forwarders[newIndex];
   forwarders[newIndex] = tmp;
   return true;
@@ -46,7 +46,7 @@ Iotsa433ReceiveMod::handler() {
     if (needsAuthentication()) return;
     String command = server->arg("command");
     if (command == "Add") {
-      Iotsa433ReveiveForwarder newfw;
+      Iotsa433ReceiveForwarder newfw;
       newfw.formArgHandler(server, "");
       anyChanged = _addForwarder(newfw);
     } else
@@ -69,7 +69,7 @@ Iotsa433ReceiveMod::handler() {
   // Configuration
   message += "<h2>Configuration</h2><h3>Defined forwarders</h3>";
   message += "<table><tr><th>index</th>";
-  Iotsa433ReveiveForwarder::formHandlerTH(message);
+  Iotsa433ReceiveForwarder::formHandlerTH(message);
   message += "<th>OP</th></tr>";
   int i = 0;
   int last_i = forwarders.size()-1;
@@ -90,7 +90,7 @@ Iotsa433ReceiveMod::handler() {
   message += "</table>";
   message += "<h3>Add Forwarder</h3></table>";
   message += "<form>";
-  Iotsa433ReveiveForwarder::formHandler(message);
+  Iotsa433ReceiveForwarder::formHandler(message);
   message += "<br><input type='submit' name='command' value='Add'></form>";
   // Operation
   message += "<h2>Recently received codes</h2>";
@@ -136,15 +136,21 @@ bool Iotsa433ReceiveMod::getHandler(const char *path, JsonObject& reply) {
 bool Iotsa433ReceiveMod::putHandler(const char *path, const JsonVariant& request, JsonObject& reply) {
   bool anyChanged = false;
   JsonObject reqObj = request.as<JsonObject>();
-#if 0
-  if (reqObj.containsKey("argument")) {
-    argument = reqObj["argument"].as<String>();
-    anyChanged = true;
-  }
-#else
-  IotsaSerial.println("PUT not yet imeplemented");
-#endif
+  IotsaSerial.println("PUT not yet implemented");
   if (anyChanged) configSave();
+  return anyChanged;
+}
+
+bool Iotsa433ReceiveMod::postHandler(const char *path, const JsonVariant& request, JsonObject& reply) {
+  bool anyChanged = false;
+  JsonObject reqObj = request.as<JsonObject>();
+  Iotsa433ReceiveForwarder newForwarder;
+  if (newForwarder.putHandler(reqObj)) {
+    if (_addForwarder(newForwarder)) {
+      anyChanged = true;
+      configSave();
+    }
+  }
   return anyChanged;
 }
 #endif // IOTSA_WITH_API
@@ -154,7 +160,7 @@ void Iotsa433ReceiveMod::serverSetup() {
   server->on("/433receive", std::bind(&Iotsa433ReceiveMod::handler, this));
 #endif
 #ifdef IOTSA_WITH_API
-  api.setup("/api/433receive", true, true);
+  api.setup("/api/433receive", true, true, true);
   name = "433receive";
 #endif
 }
@@ -165,7 +171,7 @@ void Iotsa433ReceiveMod::configLoad() {
   forwarders.clear();
   for(int idx=0; ; idx++) {
     String f_name = String(idx);
-    Iotsa433ReveiveForwarder newForwarder;
+    Iotsa433ReceiveForwarder newForwarder;
     if (!newForwarder.configLoad(cf, f_name)) break;
     _addForwarder(newForwarder);
   }
@@ -179,6 +185,7 @@ void Iotsa433ReceiveMod::configSave() {
     String f_name = String(idx++);
     it.configSave(cf, f_name);
   }
+  IotsaSerial.printf("xxxjack configSave: %d items\n", idx);
 }
 
 void Iotsa433ReceiveMod::loop() {

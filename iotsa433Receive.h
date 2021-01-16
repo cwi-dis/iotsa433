@@ -20,16 +20,17 @@ public:
 protected:
   bool getHandler(const char *path, JsonObject& reply) override;
   bool putHandler(const char *path, const JsonVariant& request, JsonObject& reply) override;
+  bool postHandler(const char *path, const JsonVariant& request, JsonObject& reply) override;
   void _received(uint32_t value, int telegram_protocol, int telegram_bits, int telegram_pulsewidth);
   void _forward_one();
   void configLoad() override;
   void configSave() override;
   void handler();
 
-  bool _addForwarder(Iotsa433ReveiveForwarder& newForwarder);
+  bool _addForwarder(Iotsa433ReceiveForwarder& newForwarder);
   bool _delForwarder(int index);
   bool _swapForwarder(int oldIndex, int newIndex);
-  std::vector<Iotsa433ReveiveForwarder> forwarders;
+  std::vector<Iotsa433ReceiveForwarder> forwarders;
 };
 
 #endif

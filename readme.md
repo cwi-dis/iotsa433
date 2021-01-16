@@ -27,10 +27,26 @@ For this reason you will most likely have to adapt the code to whatever remote c
 
 But: you could be lucky: the type that is called _HEMA_ in the code is a fairly common type. The chance that you have an _ELRO Flamingo FA500_ set is a lot less likely, so you could rip that code out and use the standard rc-switch library. 
 
+## Terminology
+
+The wording used is different for each manufacturer of 433MHz devices and software. We use the following terminology:
+
+- `brand` is a class of devices and remotes that are somehow compatible with each other.
+- `group` can usually be set on the remote using dip-switches, or is hardcoded by the remote.
+- `appliance` is a socket or bulb or motor or other devices controlled by (usually) one set of on/off buttons on one remote.
+- `state` whether the device is on or off. Support for multi-valued states (such dimmers) is easy to add.
+- `telegram_protocol`, `telegram_pulsewidth`, `telegram_tristate`, `telegram_binary`, `telegram_bits` see  <https://github.com/sui77/rc-switch>
+
 ## REST API
 
-`GET /api/433` to be supplied.
+`GET /api/433receive` returns:
 
-`PUT /api/433` to be supplied.
+-  `received` is a list of the 10 most recently received commands from remote controls (telegrams). Fields as above, field `time` states how many seconds ago the command was received.
+-  `forwarders` is a list of triggers and URLs. If a command is received that matches the trigger a `GET` request is sent to the URL. If a field in the trigger is empty it alwasy matches. Available fields:
+	-  `brand`, `group`, `appliance`, `state` and `telegram_tristate` are as explained above.
+	-  `url` the URL to sent the request to.
+	-  `parameters` is a boolean. If true the fields are added as a query with _name=value_ to the URL.
 
-`GET /api/433config` to be supplied.
+`POST /api/433receive` adds a new `forwarder` to the start of the list.
+
+`PUT /api/433receive` is not yet implemented.

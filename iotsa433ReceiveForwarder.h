@@ -4,7 +4,7 @@
 #include "iotsaApi.h"
 #include "iotsaConfigFile.h"
 
-class Iotsa433ReveiveForwarder : public IotsaApiModObject {
+class Iotsa433ReceiveForwarder : public IotsaApiModObject {
 public:
   bool configLoad(IotsaConfigFileLoad& cf, String& name) override;
   void configSave(IotsaConfigFileSave& cf, String& name) override;

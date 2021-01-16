@@ -7,46 +7,40 @@
 extern RCSwitch switch433; // Note: shared variable with Iotsa433Receive
 int switch433_pin_send = 5;
 
-bool Iotsa433SendMod::_send_binary(int telegram_protocol, int telegram_pulsewidth, String telegram_binary) {
+bool Iotsa433SendMod::_send_set_protocol(int telegram_protocol, int telegram_pulsewidth) {
   if (telegram_protocol < 0) telegram_protocol = 1; // Default telegram_protocol
   if (telegram_pulsewidth > 0) {
     switch433.setProtocol(telegram_protocol, telegram_pulsewidth); // Set telegram_protocol, override telegram_pulsewidth
   } else {
     switch433.setProtocol(telegram_protocol); // Set telegram_protocol, use default telegram_pulsewidth
   }
+  return true;
+}
+
+bool Iotsa433SendMod::_send_binary(String telegram_binary) {
+  IFDEBUG IotsaSerial.printf("433send: binary=%s\n", telegram_binary.c_str());
   switch433.send(telegram_binary.c_str());
   return true;
 }
 
-bool Iotsa433SendMod::_send_tristate(int telegram_protocol, int telegram_pulsewidth, String telegram_tristate) {
-  if (telegram_protocol < 0) telegram_protocol = 1; // Default telegram_protocol
-  if (telegram_pulsewidth > 0) {
-    switch433.setProtocol(telegram_protocol, telegram_pulsewidth); // Set telegram_protocol, override telegram_pulsewidth
-  } else {
-    switch433.setProtocol(telegram_protocol); // Set telegram_protocol, use default telegram_pulsewidth
-  }
+bool Iotsa433SendMod::_send_tristate(String telegram_tristate) {
+  IFDEBUG IotsaSerial.printf("433send: tristate=%s\n", telegram_tristate.c_str());
   switch433.sendTriState(telegram_tristate.c_str());
   return true;
 }
 
 bool Iotsa433SendMod::_send_brand(int telegram_protocol, int telegram_pulsewidth, String brand, String group, String appliance, bool state) {
-  if (telegram_protocol <= 0) {
-    telegram_protocol = 1; // Default telegram_protocol
 #ifdef WITH_ELRO_FLAMINGO
-    if (brand == "ELRO") telegram_protocol = 13;
+  if (telegram_protocol <= 0 && brand == "ELRO") telegram_protocol = 13;
 #endif
-  }
-  if (telegram_pulsewidth > 0) {
-    switch433.setProtocol(telegram_protocol, telegram_pulsewidth); // Set telegram_protocol, override telegram_pulsewidth
-  } else {
-    switch433.setProtocol(telegram_protocol); // Set telegram_protocol, use default telegram_pulsewidth
-  }
+  _send_set_protocol(telegram_protocol, telegram_pulsewidth);
 #ifdef WITH_HEMA
   if (brand == "HEMA") brand = ""; // default behaviour
 #endif
 #ifdef WITH_ELRO_FLAMINGO
   if (brand == "ELRO") {
     String telegram_binary = encode433_elro(group, appliance, (int)state);
+    IFDEBUG IotsaSerial.printf("433send: brand=ELRO group=%s appliance=%s state=%d\n", group.c_str(), appliance.c_str(), state);
     switch433.send(telegram_binary.c_str());
     return true;
   }
@@ -56,13 +50,14 @@ bool Iotsa433SendMod::_send_brand(int telegram_protocol, int telegram_pulsewidth
     int applianceNum = -1;
     if (appliance == "A" || appliance == "B" || appliance == "C" || appliance == "D" || appliance == "E") {
       // Hema-style device
-      applianceNum = appliance[0] - 'A';
+      applianceNum = appliance[0] - 'A' + 1;
     }
     if (appliance == "0" || appliance == "1" || appliance == "2" || appliance == "3" || appliance == "4" || appliance == "5") {
       // Numbered appliances
       applianceNum = appliance[0] - '0';
     }
     if (applianceNum >= 0) {
+      IFDEBUG IotsaSerial.printf("433send: group=%s appliance=%d state=%d\n", group.c_str(), applianceNum, state);
       if (state) {
         switch433.switchOn(group.c_str(), applianceNum);
       } else {
@@ -70,6 +65,7 @@ bool Iotsa433SendMod::_send_brand(int telegram_protocol, int telegram_pulsewidth
       }
     } else {
       // Presume appliance is a mask-style string
+      IFDEBUG IotsaSerial.printf("433send: group=%s appliance=%s state=%d\n", group.c_str(), appliance.c_str(), state);
       if (state) {
         switch433.switchOn(group.c_str(), appliance.c_str());
       } else {
@@ -97,7 +93,7 @@ Iotsa433SendMod::handler() {
   if (server->hasArg("telegram_tristate")) {
     // Send telegram_tristate command
     String telegram_tristate = server->arg("telegram_tristate");
-    if (_send_tristate(telegram_protocol, telegram_pulsewidth, telegram_tristate)) {
+    if (_send_set_protocol(telegram_protocol, telegram_pulsewidth) && _send_tristate(telegram_tristate)) {
       server->send(200, "text/plain", "OK");
     } else {
       server->send(400, "text/plain", "Bad telegram_tristate value");
@@ -108,7 +104,7 @@ Iotsa433SendMod::handler() {
   if (server->hasArg("telegram_binary")) {
     // Send binary command
     String telegram_binary = server->arg("telegram_binary");
-    if (_send_binary(telegram_protocol, telegram_pulsewidth, telegram_binary)) {
+    if (_send_set_protocol(telegram_protocol, telegram_pulsewidth) && _send_binary(telegram_binary)) {
       server->send(200, "text/plain", "OK");
     } else {
       server->send(400, "text/plain", "Bad binary value");
@@ -120,9 +116,9 @@ Iotsa433SendMod::handler() {
   if (server->hasArg("brand")) brand = server->arg("brand");
   int nArgs = 0;
 
-  if (server->hasArg("state")) nArgs++;
   if (server->hasArg("group")) nArgs++;
   if (server->hasArg("appliance")) nArgs++;
+  if (server->hasArg("state")) nArgs++;
   if (nArgs == 3) {
     // We have all arguments. Send command.
     String group = server->arg("group");
@@ -200,49 +196,72 @@ void Iotsa433SendMod::setup() {
 
 #ifdef IOTSA_WITH_API
 bool Iotsa433SendMod::getHandler(const char *path, JsonObject& reply) {
-#if 0
-  reply["argument"] = argument;
-#endif
-  return true;
+  return false;
 }
 
 bool Iotsa433SendMod::putHandler(const char *path, const JsonVariant& request, JsonObject& reply) {
   bool anyChanged = false;
-#if 0
   JsonObject reqObj = request.as<JsonObject>();
-  if (reqObj.containsKey("argument")) {
-    argument = reqObj["argument"].as<String>();
+  int telegram_protocol = reqObj["telegram_protocol"] | -1;
+  int telegram_pulsewidth = reqObj["telegram_pulsewidth"] | -1;
+
+  if (reqObj.containsKey("telegram_tristate")) {
     anyChanged = true;
+    String telegram_tristate = reqObj["telegram_tristate"].as<String>();
+    bool ok = _send_set_protocol(telegram_protocol, telegram_pulsewidth) && _send_tristate(telegram_tristate);
+    reply["status_tristate"] = ok;
   }
-  if (anyChanged) configSave();
-#endif
+
+  if (reqObj.containsKey("telegram_binary")) {
+    anyChanged = true;
+    String telegram_binary = reqObj["telegram_binary"].as<String>();
+    bool ok = _send_set_protocol(telegram_protocol, telegram_pulsewidth) && _send_binary(telegram_binary);
+    reply["status_binary"] = ok;
+  }
+
+  if (reqObj.containsKey("group")||reqObj.containsKey("applicance")||reqObj.containsKey("state")) {
+    anyChanged = true;
+    String brand = reqObj["brand"].as<String>();
+    String group = reqObj["group"].as<String>();
+    String appliance = reqObj["appliance"].as<String>();
+    bool state = false;
+    if (reqObj["state"].is<char *>()) {
+      String stateStr = reqObj["state"].as<String>();
+      if (stateStr == "1" || stateStr == "on") state = true;
+    } else
+    if (reqObj["state"].is<bool>()) {
+      state = reqObj["state"];
+    } else
+    if (reqObj["state"].is<int>()) {
+      state = (bool)reqObj["state"].as<int>();
+    }
+    bool ok = _send_brand(telegram_protocol, telegram_pulsewidth, brand, group, appliance, state);
+    reply["status"] = ok;
+  }
   return anyChanged;
 }
 #endif // IOTSA_WITH_API
+
+bool Iotsa433SendMod::postHandler(const char *path, const JsonVariant& request, JsonObject& reply) {
+  return putHandler(path, request, reply);
+}
 
 void Iotsa433SendMod::serverSetup() {
 #ifdef IOTSA_WITH_WEB
   server->on("/433send", std::bind(&Iotsa433SendMod::handler, this));
 #endif
 #ifdef IOTSA_WITH_API
-  api.setup("/api/433send", true, true);
+  api.setup("/api/433send", false, true, true);
   name = "433send";
 #endif
 }
 
 void Iotsa433SendMod::configLoad() {
-  IotsaConfigFileLoad cf("/config/433send.cfg");
-#if 0
-  cf.get("argument", argument, "");
-#endif
- 
+//  IotsaConfigFileLoad cf("/config/433send.cfg"); 
 }
 
 void Iotsa433SendMod::configSave() {
-  IotsaConfigFileSave cf("/config/433send.cfg");
-#if 0
-  cf.put("argument", argument);
-#endif
+//  IotsaConfigFileSave cf("/config/433send.cfg");
 }
 
 void Iotsa433SendMod::loop() {
