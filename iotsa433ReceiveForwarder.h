@@ -3,8 +3,9 @@
 #include "iotsa.h"
 #include "iotsaApi.h"
 #include "iotsaConfigFile.h"
+#include "iotsaRequest.h"
 
-class Iotsa433ReceiveForwarder : public IotsaApiModObject {
+class Iotsa433ReceiveForwarder : public IotsaRequest {
 public:
   bool configLoad(IotsaConfigFileLoad& cf, String& name) override;
   void configSave(IotsaConfigFileSave& cf, String& name) override;
@@ -23,7 +24,6 @@ public:
   bool send(String& _tristate, String& _brand, String& _group, String& _appliance, String& _state);
 
 public:
-  String url; // URL to send a request to
   String telegram_tristate; // if non-empty, only apply to this tri-state telegram_binary
   String brand; // if non-empty, only apply to switches of this brand
   String group; // if non-empty only apply to switch with this dip-switch selection

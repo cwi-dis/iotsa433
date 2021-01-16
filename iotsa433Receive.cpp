@@ -135,9 +135,12 @@ bool Iotsa433ReceiveMod::getHandler(const char *path, JsonObject& reply) {
 
 bool Iotsa433ReceiveMod::putHandler(const char *path, const JsonVariant& request, JsonObject& reply) {
   bool anyChanged = false;
+#if 0
   JsonObject reqObj = request.as<JsonObject>();
-  IotsaSerial.println("PUT not yet implemented");
   if (anyChanged) configSave();
+#else
+  IotsaSerial.println("PUT not yet implemented");
+#endif
   return anyChanged;
 }
 
