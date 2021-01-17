@@ -102,6 +102,7 @@ Iotsa433ReceiveMod::handler() {
     message += "</tr>";
   }
   message += "</table>";
+  message += "<br><form method='get'><input type='submit' value='refresh'></form>";
   server->send(200, "text/html", message);
 }
 

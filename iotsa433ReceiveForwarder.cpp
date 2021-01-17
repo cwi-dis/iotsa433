@@ -132,7 +132,11 @@ bool Iotsa433ReceiveForwarder::send(String& _tristate, String& _brand, String& _
   const char *query = NULL;
   String queryStore;
   if (parameters) {
-    queryStore = "telegram_tristate=" + _tristate + "&brand=" + _brand + "&group=" + _group + "&appliance=" + _appliance + "&state=" + _state;
+    if (group != "" && appliance != "") {
+      queryStore = "brand=" + _brand + "&group=" + _group + "&appliance=" + _appliance + "&state=" + _state;
+    } else {
+      queryStore = "telegram_tristate=" + _tristate;
+    } // xxxjack should send binary if triState unavailable
     query = queryStore.c_str();
   }
   IFDEBUG IotsaSerial.print("433recv: GET ");
