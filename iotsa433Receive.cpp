@@ -242,8 +242,11 @@ void Iotsa433ReceiveMod::_forward_one() {
   for (auto it: forwarders) {
     if (it.matches(telegram_tristate, brand, group, appliance, state)) {
       ok = it.send(telegram_tristate, brand, group, appliance, state);
-      if (!ok) {
+      if (ok) {
+        if (statusOkCallback != nullptr) statusOkCallback();
+      } else {
         IFDEBUG IotsaSerial.println("forward failed");
+        if (statusNotOkCallback != nullptr) statusNotOkCallback();
       }
       break;
     }

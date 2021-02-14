@@ -10,6 +10,8 @@
 #define Iotsa433ReceiveModBaseMod IotsaMod
 #endif
 
+typedef std::function<void(void)> callback;
+
 class Iotsa433ReceiveMod : public Iotsa433ReceiveModBaseMod {
 public:
   using Iotsa433ReceiveModBaseMod::Iotsa433ReceiveModBaseMod;
@@ -17,6 +19,7 @@ public:
   void serverSetup() override;
   void loop() override;
   String info() override;
+  void setStatusCallbacks(callback _ok, callback _notok) { statusOkCallback = _ok; statusNotOkCallback = _notok; }
 protected:
   bool getHandler(const char *path, JsonObject& reply) override;
   bool putHandler(const char *path, const JsonVariant& request, JsonObject& reply) override;
@@ -31,6 +34,8 @@ protected:
   bool _delForwarder(int index);
   bool _swapForwarder(int oldIndex, int newIndex);
   std::vector<Iotsa433ReceiveForwarder> forwarders;
+  callback statusOkCallback;
+  callback statusNotOkCallback;
 };
 
 #endif

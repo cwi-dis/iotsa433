@@ -9,6 +9,8 @@
 #define Iotsa433SendModBaseMod IotsaMod
 #endif
 
+typedef std::function<void(void)> callback;
+
 class Iotsa433SendMod : public Iotsa433SendModBaseMod {
 public:
   using Iotsa433SendModBaseMod::Iotsa433SendModBaseMod;
