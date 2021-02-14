@@ -235,20 +235,29 @@ void Iotsa433ReceiveMod::_forward_one() {
   String appliance;
   String state;
   String telegram_tristate;
+  int cur_forward = received_forward;
   bool ok = received_buffer[received_forward]._parse(telegram_tristate, brand, group, appliance, state);
   received_forward = RB_INC(received_forward);
-  if (!ok) return;
+  received_buffer[received_forward].status = Iotsa433Telegram::TelegramStatus::queued;
+  if (!ok) {
+    received_buffer[cur_forward].status = Iotsa433Telegram::TelegramStatus::ignored;
+    return;
+  }
 
   for (auto it: forwarders) {
     if (it.matches(telegram_tristate, brand, group, appliance, state)) {
+      received_buffer[cur_forward].status = Iotsa433Telegram::TelegramStatus::sending;
       ok = it.send(telegram_tristate, brand, group, appliance, state);
       if (ok) {
+        received_buffer[cur_forward].status = Iotsa433Telegram::TelegramStatus::sent_ok;
         if (statusOkCallback != nullptr) statusOkCallback();
       } else {
+        received_buffer[cur_forward].status = Iotsa433Telegram::TelegramStatus::sent_fail;
         IFDEBUG IotsaSerial.println("forward failed");
         if (statusNotOkCallback != nullptr) statusNotOkCallback();
       }
-      break;
+      return;
     }
   }
+  received_buffer[cur_forward].status = Iotsa433Telegram::TelegramStatus::ignored;
 }

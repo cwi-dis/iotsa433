@@ -27,6 +27,8 @@ public:
   int telegram_protocol;
   int telegram_bits;
   int telegram_pulsewidth;
+  enum TelegramStatus { queued, ignored, sending, sent_ok, sent_fail} status; // Forwarding status
+
 };
 
 #endif // _IOTSA433TELEGRAM_H_

@@ -16,11 +16,12 @@ void Iotsa433Telegram::configSave(IotsaConfigFileSave& cf, String& name) {
 
 #ifdef IOTSA_WITH_WEB
 void Iotsa433Telegram::formHandlerTH(String& message) {
-  message += "<th>seconds ago</th><th>brand</th><th>group</th><th>appliance</th><th>state</th><th>telegram_protocol</th><th>telegram_pulsewidth</th><th>telegram_bits</th><th>telegram_binary</th><th>telegram_tristate</th></tr>";
+  message += "<th>seconds ago</th><th>status</th><th>brand</th><th>group</th><th>appliance</th><th>state</th><th>telegram_protocol</th><th>telegram_pulsewidth</th><th>telegram_bits</th><th>telegram_binary</th><th>telegram_tristate</th></tr>";
 }
 
 void Iotsa433Telegram::formHandlerTD(String& message) {
   message += "<td>"  + String((::millis()-millis)/1000.0) + "</td>";
+  message += "<td>" + String(status) + "</td>";
   String group_buf;
   String appliance_buf;
   String state_buf;
@@ -79,6 +80,7 @@ bool Iotsa433Telegram::formArgHandler(IotsaWebServer *server, String f_name) {
 void Iotsa433Telegram::getHandler(JsonObject& fRv) {
     
     fRv["time"] = (::millis() - millis)/1000.0;
+    fRv["status"] = status;
     String group_buf;
     String appliance_buf;
     String state_buf;
