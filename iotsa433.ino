@@ -41,7 +41,7 @@ Iotsa433ReceiveCallback showStatusNotOk;
 void setup(void){
   application.setup();
   application.serverSetup();
-#if 1
+#if 0
   showStatusOk = std::bind(&IotsaLedMod::set, ledMod, 0x002000, 250, 0, 1);
   showStatusNotOk = std::bind(&IotsaLedMod::set, ledMod, 0x200000, 1000, 0, 1);
 #endif
