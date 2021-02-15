@@ -20,6 +20,10 @@ static int received_in = 0;
 static int received_out = 0;
 static int received_forward = 0;
 
+void Iotsa433ReceiveMod::setStatusCallbacks(Iotsa433ReceiveCallback _ok, Iotsa433ReceiveCallback _notok) {
+   statusOkCallback = _ok; 
+   statusNotOkCallback = _notok; 
+}
 
 bool Iotsa433ReceiveMod::_addForwarder(Iotsa433ReceiveForwarder& newForwarder) {
   forwarders.push_back(newForwarder);

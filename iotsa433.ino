@@ -33,15 +33,18 @@ IotsaOtaMod otaMod(application);
 #ifdef WITH_LED
 #include "iotsaLed.h"
 IotsaLedMod ledMod(application, NEOPIXEL_PIN);
-typedef std::function<void(void)> callback;
-callback showStatusOk = std::bind(&IotsaLedMod::set, ledMod, 0x002000, 250, 0, 1);
-callback showStatusNotOk = std::bind(&IotsaLedMod::set, ledMod, 0x200000, 1000, 0, 1);
+Iotsa433ReceiveCallback showStatusOk;
+Iotsa433ReceiveCallback showStatusNotOk;
 #endif
 
 
 void setup(void){
   application.setup();
   application.serverSetup();
+#if 1
+  showStatusOk = std::bind(&IotsaLedMod::set, ledMod, 0x002000, 250, 0, 1);
+  showStatusNotOk = std::bind(&IotsaLedMod::set, ledMod, 0x200000, 1000, 0, 1);
+#endif
   receiveMod.setStatusCallbacks(showStatusOk, showStatusNotOk);
 #ifndef ESP32
   ESP.wdtEnable(WDTO_120MS);
