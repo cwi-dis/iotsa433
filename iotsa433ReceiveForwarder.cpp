@@ -132,7 +132,7 @@ bool Iotsa433ReceiveForwarder::send(String& _tristate, String& _brand, String& _
   const char *query = NULL;
   String queryStore;
   if (parameters) {
-    if (brand != "" && group != "") {
+    if (_brand != "" && _group != "") {
       queryStore = "brand=" + _brand + "&group=" + _group + "&appliance=" + _appliance + "&state=" + _state;
     } else {
       queryStore = "telegram_tristate=" + _tristate;
