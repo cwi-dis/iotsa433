@@ -45,7 +45,11 @@ void setup(void){
   showStatusOk = std::bind(&IotsaLedMod::set, ledMod, 0x002000, 250, 0, 1);
   showStatusNotOk = std::bind(&IotsaLedMod::set, ledMod, 0x200000, 1000, 0, 1);
 #endif
-  receiveMod.setStatusCallbacks(showStatusOk, showStatusNotOk);
+  // xxxjack receiveMod.setStatusCallbacks(showStatusOk, showStatusNotOk);
+  receiveMod.setStatusCallbacks(
+    []{ ledMod.set(0x002000, 250, 0, 1); }, 
+    []{ ledMod.set(0x200000, 1000, 0, 1); }
+    );
 #ifndef ESP32
   ESP.wdtEnable(WDTO_120MS);
 #endif
