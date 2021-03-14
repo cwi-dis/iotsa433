@@ -33,19 +33,14 @@ IotsaOtaMod otaMod(application);
 #ifdef WITH_LED
 #include "iotsaLed.h"
 IotsaLedMod ledMod(application, NEOPIXEL_PIN);
-Iotsa433ReceiveCallback showStatusOk;
-Iotsa433ReceiveCallback showStatusNotOk;
 #endif
 
 
 void setup(void){
   application.setup();
   application.serverSetup();
-#if 0
-  showStatusOk = std::bind(&IotsaLedMod::set, ledMod, 0x002000, 250, 0, 1);
-  showStatusNotOk = std::bind(&IotsaLedMod::set, ledMod, 0x200000, 1000, 0, 1);
-#endif
-  // xxxjack receiveMod.setStatusCallbacks(showStatusOk, showStatusNotOk);
+  // For some reason trying to create the callbacks with std::bind doesn't work,
+  // and crashes during initialization. 
   receiveMod.setStatusCallbacks(
     []{ ledMod.set(0x002000, 250, 0, 1); }, 
     []{ ledMod.set(0x200000, 1000, 0, 1); }
