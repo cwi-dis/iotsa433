@@ -94,7 +94,7 @@ void Iotsa433Telegram::getHandler(JsonObject& fRv) {
     }
 #endif
 #ifdef WITH_ELRO_FLAMINGO
-    bool is_elro = decode433_elro(telegram_binary, 24, group_buf, appliance_buf, state_buf);
+    bool is_elro = decode433_elro(telegram_binary, 28, group_buf, appliance_buf, state_buf);
     if (is_elro) {
       fRv["brand"] = "ELRO";
       fRv["group"] = group_buf;
