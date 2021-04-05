@@ -51,7 +51,7 @@ Iotsa433ReceiveMod::handler() {
     String command = server->arg("command");
     if (command == "Add") {
       Iotsa433ReceiveForwarder newfw;
-      newfw.formArgHandler(server, "");
+      newfw.formHandler_args(server, "", true);
       anyChanged = _addForwarder(newfw);
     } else
     if (command == "Delete") {
@@ -73,7 +73,7 @@ Iotsa433ReceiveMod::handler() {
   // Configuration
   message += "<h2>Configuration</h2><h3>Defined forwarders</h3>";
   message += "<table><tr><th>index</th>";
-  Iotsa433ReceiveForwarder::formHandlerTH(message);
+  Iotsa433ReceiveForwarder::formHandler_TH(message, true);
   message += "<th>OP</th></tr>";
   int i = 0;
   int last_i = forwarders.size()-1;
@@ -81,7 +81,7 @@ Iotsa433ReceiveMod::handler() {
     // First field: index
     message += "<tr><td>" + String(i) + "</td>";
     // Subsequent fields: from forwarder433
-    it.formHandlerTD(message);
+    it.formHandler_TD(message, true);
     // Last field: operations
     message += "<td>";
     message += "<form><input type='hidden' name='index' value='" + String(i) + "'><input type='submit' name='command' value='Delete'>";
@@ -94,15 +94,15 @@ Iotsa433ReceiveMod::handler() {
   message += "</table>";
   message += "<h3>Add Forwarder</h3></table>";
   message += "<form>";
-  Iotsa433ReceiveForwarder::formHandler(message);
+  Iotsa433ReceiveForwarder::formHandler_emptyfields(message);
   message += "<br><input type='submit' name='command' value='Add'></form>";
   // Operation
   message += "<h2>Recently received codes</h2>";
   message += "<table><tr>";
-  Iotsa433Telegram::formHandlerTH(message);
+  Iotsa433Telegram::formHandler_TH(message, false);
   for(int i = received_out; i != received_in; i = RB_INC(i)) {
     message += "<tr>";
-    received_buffer[i].formHandlerTD(message);
+    received_buffer[i].formHandler_TD(message, false);
     message += "</tr>";
   }
   message += "</table>";

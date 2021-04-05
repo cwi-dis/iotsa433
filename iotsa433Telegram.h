@@ -6,14 +6,14 @@
 
 class Iotsa433Telegram : public IotsaApiModObject {
 public:
-  bool configLoad(IotsaConfigFileLoad& cf, String& name) override;
-  void configSave(IotsaConfigFileSave& cf, String& name) override;
+  bool configLoad(IotsaConfigFileLoad& cf, const String& name) override;
+  void configSave(IotsaConfigFileSave& cf, const String& name) override;
 #ifdef IOTSA_WITH_WEB
-  static void formHandlerTH(String& message) /*override*/; //< Emit <th> fields with names
-  static void formHandler(String& message) /*override*/; //< Emit empty form to add forwarder
-  void formHandler(String& message, String& text, String& f_name) override;
-  void formHandlerTD(String& message) override;  //< Emit <td> fields with data
-  bool formArgHandler(IotsaWebServer *server, String f_name) override;
+  static void formHandler_TH(String& message, bool includeConfig) /*override*/; //< Emit <th> fields with names
+  static void formHandler_emptyfields(String& message) /*override*/; //< Emit empty form to add forwarder
+  void formHandler_fields(String& message, const String& text, const String& f_name, bool includeConfig) override;
+  void formHandler_TD(String& message, bool includeConfig) override;  //< Emit <td> fields with data
+  bool formHandler_args(IotsaWebServer *server, const String& f_name, bool includeConfig) override;
 #endif
 #ifdef IOTSA_WITH_API
   void getHandler(JsonObject& reply) override;

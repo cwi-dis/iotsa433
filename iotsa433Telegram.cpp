@@ -7,19 +7,19 @@ static String _int2bin(int value, int telegram_bits) {
   return rv;
 }
 
-bool Iotsa433Telegram::configLoad(IotsaConfigFileLoad& cf, String& name) { 
+bool Iotsa433Telegram::configLoad(IotsaConfigFileLoad& cf, const String& name) { 
     return false; 
 }
 
-void Iotsa433Telegram::configSave(IotsaConfigFileSave& cf, String& name) {
+void Iotsa433Telegram::configSave(IotsaConfigFileSave& cf, const String& name) {
 }
 
 #ifdef IOTSA_WITH_WEB
-void Iotsa433Telegram::formHandlerTH(String& message) {
+void Iotsa433Telegram::formHandler_TH(String& message, bool includeConfig) {
   message += "<th>seconds ago</th><th>status</th><th>brand</th><th>group</th><th>appliance</th><th>state</th><th>telegram_protocol</th><th>telegram_pulsewidth</th><th>telegram_bits</th><th>telegram_binary</th><th>telegram_tristate</th></tr>";
 }
 
-void Iotsa433Telegram::formHandlerTD(String& message) {
+void Iotsa433Telegram::formHandler_TD(String& message, bool includeConfig) {
   message += "<td>"  + String((::millis()-millis)/1000.0) + "</td>";
   message += "<td>" + String(status) + "</td>";
   String group_buf;
@@ -66,13 +66,13 @@ void Iotsa433Telegram::formHandlerTD(String& message) {
   message += "<td>" + tri_buf + "</td>";
 }
 
-void Iotsa433Telegram::formHandler(String& message, String& text, String& f_name) {
+void Iotsa433Telegram::formHandler_fields(String& message, const String& text, const String& f_name, bool includeConfig) {
 }
 
-void Iotsa433Telegram::formHandler(String& message) {
+void Iotsa433Telegram::formHandler_emptyfields(String& message) {
 }
 
-bool Iotsa433Telegram::formArgHandler(IotsaWebServer *server, String f_name) {
+bool Iotsa433Telegram::formHandler_args(IotsaWebServer *server, const String& f_name, bool includeConfig) {
     return false;
 }
 #endif

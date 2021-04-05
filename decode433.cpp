@@ -108,9 +108,9 @@ bool decode433_elro(uint32_t dec, int bitLength, String& dip, String& appliance,
   //uint32_t in = (~((input >> 2) | (((input & 3) << 0x1a))) << 4);
   uint16_t receiverId = (uint16_t)mn[0];
   uint16_t value = (((mn[1] >> 1) & 1) + (mn[6] & 0x7) + ((mn[6] & 0x8) >> 3));
-  uint16_t rollingCode = (mn[1] >> 2);
   uint16_t transmitterId = (mn[5] << 12) + (mn[4] << 8) + (mn[3] << 4) + (mn[2] << 0);
 #ifdef decode433_debug_prints
+  uint16_t rollingCode = (mn[1] >> 2);
   IotsaSerial.printf("xxxjack decode_433: receiverID=0x%x, value=0x%x, rollingCode=0x%x, transmitterId=0x%x\n", receiverId, value, rollingCode, transmitterId);
 #endif
   dip = String(transmitterId);
