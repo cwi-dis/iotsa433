@@ -1,5 +1,8 @@
 # iotsa433 - 433MHz home automation interface
 
+![build-platformio](https://github.com/cwi-dis/iotsa433/workflows/build-platformio/badge.svg)
+![build-arduino](https://github.com/cwi-dis/iotsa433/workflows/build-arduino/badge.svg)
+
 This is a wifi http server that allows access to simple 433 MHz home automation devices. These are usually plugin sockets, door openers, etc. and the remote controls for those.
 
 Home page is <https://github.com/cwi-dis/iotsa433>.
