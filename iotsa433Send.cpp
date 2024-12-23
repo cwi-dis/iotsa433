@@ -205,34 +205,34 @@ bool Iotsa433SendMod::putHandler(const char *path, const JsonVariant& request, J
   int telegram_protocol = reqObj["telegram_protocol"] | -1;
   int telegram_pulsewidth = reqObj["telegram_pulsewidth"] | -1;
 
-  if (reqObj.containsKey("telegram_tristate")) {
+  String telegram_tristate;
+  if (getFromRequest<const char *>(reqObj, "telegram_tristate", telegram_tristate)) {
     anyChanged = true;
-    String telegram_tristate = reqObj["telegram_tristate"].as<String>();
     bool ok = _send_set_protocol(telegram_protocol, telegram_pulsewidth) && _send_tristate(telegram_tristate);
     reply["status_tristate"] = ok;
   }
-
-  if (reqObj.containsKey("telegram_binary")) {
+  String telegram_binary;
+  if (getFromRequest<const char *>(reqObj, "telegram_binary", telegram_binary)) {
     anyChanged = true;
-    String telegram_binary = reqObj["telegram_binary"].as<String>();
     bool ok = _send_set_protocol(telegram_protocol, telegram_pulsewidth) && _send_binary(telegram_binary);
     reply["status_binary"] = ok;
   }
-
-  if (reqObj.containsKey("group")||reqObj.containsKey("applicance")||reqObj.containsKey("state")) {
+  String brand;
+  String group;
+  String appliance;
+  if (
+    getFromRequest<const char *>(reqObj, "brand", brand) ||
+    getFromRequest<const char *>(reqObj, "group", group) ||
+    getFromRequest<const char *>(reqObj, "appliance", appliance)
+  ) {
     anyChanged = true;
-    String brand = reqObj["brand"].as<String>();
-    String group = reqObj["group"].as<String>();
-    String appliance = reqObj["appliance"].as<String>();
     bool state = false;
-    if (reqObj["state"].is<char *>()) {
+    if (reqObj["state"].is<const char *>()) {
       String stateStr = reqObj["state"].as<String>();
       if (stateStr == "1" || stateStr == "on") state = true;
-    } else
-    if (reqObj["state"].is<bool>()) {
+    } else if (reqObj["state"].is<bool>()) {
       state = reqObj["state"];
-    } else
-    if (reqObj["state"].is<int>()) {
+    } else if (reqObj["state"].is<int>()) {
       state = (bool)reqObj["state"].as<int>();
     }
     bool ok = _send_brand(telegram_protocol, telegram_pulsewidth, brand, group, appliance, state);

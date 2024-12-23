@@ -109,29 +109,23 @@ bool Iotsa433ReceiveForwarder::putHandler(const JsonVariant& request) {
   if (!IotsaRequest::putHandler(request)) return false;
   bool any = false;
   const JsonObject& reqObj = request.as<JsonObject>();
-  if (reqObj.containsKey("telegram_tristate")) {
+  if (getFromRequest<const char *>(reqObj, "telegram_tristate", telegram_tristate)) {
     any = true;
-    telegram_tristate = reqObj["telegram_tristate"].as<String>();
   }
-  if (reqObj.containsKey("brand")) {
+  if (getFromRequest<const char *>(reqObj, "brand", brand)) {
     any = true;
-    brand = reqObj["brand"].as<String>();
   }
-  if (reqObj.containsKey("group")) {
+  if (getFromRequest<const char *>(reqObj, "group", group)) {
     any = true;
-    group = reqObj["group"].as<String>();
   }
-  if (reqObj.containsKey("appliance")) {
+  if (getFromRequest<const char *>(reqObj, "appliance", appliance)) {
     any = true;
-    appliance = reqObj["appliance"].as<String>();
   }
-  if (reqObj.containsKey("state")) {
+  if (getFromRequest<const char *>(reqObj, "state", state)) {
     any = true;
-    state = reqObj["state"].as<String>();
   }
-  if (reqObj.containsKey("parameters")) {
+  if (getFromRequest<bool>(reqObj, "parameters", parameters)) {
     any = true;
-    parameters = reqObj["parameters"].as<bool>();
   }
   return any;
 }

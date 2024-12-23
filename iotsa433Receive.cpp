@@ -124,14 +124,14 @@ void Iotsa433ReceiveMod::setup() {
 
 #ifdef IOTSA_WITH_API
 bool Iotsa433ReceiveMod::getHandler(const char *path, JsonObject& reply) {
-  JsonArray rvConfig = reply.createNestedArray("forwarders");
+  JsonArray rvConfig = reply["forwarders"].to<JsonArray>();
   for (auto it: forwarders) {
-    JsonObject fRv = rvConfig.createNestedObject();
+    JsonObject fRv = rvConfig.add<JsonObject>();
     it.getHandler(fRv);
   }
-  JsonArray rvReceived = reply.createNestedArray("received");
+  JsonArray rvReceived = reply["received"].to<JsonArray>();
   for(int i = received_out; i != received_in; i = RB_INC(i)) {
-    JsonObject fRv = rvReceived.createNestedObject();
+    JsonObject fRv = rvReceived.add<JsonObject>();
     received_buffer[i].getHandler(fRv);
 
   }
