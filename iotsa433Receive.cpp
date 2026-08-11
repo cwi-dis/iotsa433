@@ -139,14 +139,23 @@ bool Iotsa433ReceiveMod::getHandler(const char *path, JsonObject& reply) {
 }
 
 bool Iotsa433ReceiveMod::putHandler(const char *path, const JsonVariant& request, JsonObject& reply) {
-  bool anyChanged = false;
-#if 0
+  // Full replace of the forwarders list, so GET/PUT round-trip (needed for
+  // iotsa backup/restore, which never worked against this endpoint before -
+  // see cwi-dis/iotsa#149). "received" (live telegram log, GET-only) is
+  // deliberately not accepted here.
+  if (!request.is<JsonObject>()) return false;
   JsonObject reqObj = request.as<JsonObject>();
-  if (anyChanged) configSave();
-#else
-  IotsaSerial.println("PUT not yet implemented");
-#endif
-  return anyChanged;
+  if (!reqObj["forwarders"].is<JsonArray>()) return false;
+  JsonArray newForwardersArray = reqObj["forwarders"].as<JsonArray>();
+  std::vector<Iotsa433ReceiveForwarder> newForwarders;
+  for (JsonVariant v : newForwardersArray) {
+    Iotsa433ReceiveForwarder newForwarder;
+    if (!newForwarder.putHandler(v)) return false;
+    newForwarders.push_back(newForwarder);
+  }
+  forwarders = newForwarders;
+  configSave();
+  return true;
 }
 
 bool Iotsa433ReceiveMod::postHandler(const char *path, const JsonVariant& request, JsonObject& reply) {

@@ -50,6 +50,8 @@ The wording used is different for each manufacturer of 433MHz devices and softwa
 	-  `url` the URL to sent the request to.
 	-  `parameters` is a boolean. If true the fields are added as a query with _name=value_ to the URL.
 
-`POST /api/433receive` adds a new `forwarder` to the start of the list.
+`POST /api/433receive` adds a new `forwarder` to the end of the list.
 
-`PUT /api/433receive` is not yet implemented.
+`PUT /api/433receive` replaces the whole `forwarders` list with the `forwarders` array in the
+request body (any `received` field in the body is ignored). This is what `iotsa backup`/`restore`
+use; `received` itself is GET-only live data, not restorable config.
