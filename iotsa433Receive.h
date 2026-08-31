@@ -4,19 +4,13 @@
 #include "iotsaApi.h"
 #include "iotsa433ReceiveForwarder.h"
 
-#ifdef IOTSA_WITH_API
-#define Iotsa433ReceiveModBaseMod IotsaApiMod
-#else
-#define Iotsa433ReceiveModBaseMod IotsaMod
-#endif
-
 typedef std::function<void(void)> Iotsa433ReceiveCallback;
 
-class Iotsa433ReceiveMod : public Iotsa433ReceiveModBaseMod {
+class Iotsa433ReceiveMod : public IotsaModule {
 public:
-  using Iotsa433ReceiveModBaseMod::Iotsa433ReceiveModBaseMod;
+  using IotsaModule::IotsaModule;
   void setup() override;
-  void serverSetup() override;
+  void lateSetup() override;
   void loop() override;
   String info() override;
   void setStatusCallbacks(Iotsa433ReceiveCallback _ok, Iotsa433ReceiveCallback _notok);
@@ -28,7 +22,7 @@ protected:
   void _forward_one();
   void configLoad() override;
   void configSave() override;
-  void handler();
+  void webHandler() override;
 
   bool _addForwarder(Iotsa433ReceiveForwarder& newForwarder);
   bool _delForwarder(int index);

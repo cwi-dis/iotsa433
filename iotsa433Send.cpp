@@ -78,9 +78,9 @@ bool Iotsa433SendMod::_send_brand(int telegram_protocol, int telegram_pulsewidth
   return false;
 }
 
-#ifdef IOTSA_WITH_WEB
 void
-Iotsa433SendMod::handler() {
+Iotsa433SendMod::webHandler() {
+  IotsaWebServer *server = api.webService->server;
   int telegram_protocol = -1;
   int telegram_pulsewidth = -1;
   if (server->hasArg("telegram_protocol")) {
@@ -183,7 +183,6 @@ String Iotsa433SendMod::info() {
   String message = "<p>Built with 433 MHz sender module. See <a href=\"/433send\">/433send</a> to change the devices.</p>";
   return message;
 }
-#endif // IOTSA_WITH_WEB
 
 void Iotsa433SendMod::setup() {
   configLoad();
@@ -194,7 +193,6 @@ void Iotsa433SendMod::setup() {
   //
 }
 
-#ifdef IOTSA_WITH_API
 bool Iotsa433SendMod::getHandler(const char *path, JsonObject& reply) {
   return false;
 }
@@ -240,20 +238,18 @@ bool Iotsa433SendMod::putHandler(const char *path, const JsonVariant& request, J
   }
   return anyChanged;
 }
-#endif // IOTSA_WITH_API
 
 bool Iotsa433SendMod::postHandler(const char *path, const JsonVariant& request, JsonObject& reply) {
   return putHandler(path, request, reply);
 }
 
-void Iotsa433SendMod::serverSetup() {
-#ifdef IOTSA_WITH_WEB
-  server->on("/433send", std::bind(&Iotsa433SendMod::handler, this));
-#endif
-#ifdef IOTSA_WITH_API
-  api.setup("/api/433send", false, true, true);
+void Iotsa433SendMod::lateSetup() {
+  api.setup("433send", false, true, true);
   name = "433send";
-#endif
+  // api.setup() with get=false registers no web page, but /433send has always
+  // had a form (GET on /api/433send is deliberately a no-op), so register it
+  // directly on the shared server.
+  app.server->on("/433send", std::bind(&Iotsa433SendMod::webHandler, this));
 }
 
 void Iotsa433SendMod::configLoad() {

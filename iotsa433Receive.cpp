@@ -42,9 +42,9 @@ bool Iotsa433ReceiveMod::_swapForwarder(int oldIndex, int newIndex) {
   return true;
 }
 
-#ifdef IOTSA_WITH_WEB
 void
-Iotsa433ReceiveMod::handler() {
+Iotsa433ReceiveMod::webHandler() {
+  IotsaWebServer *server = api.webService->server;
   bool anyChanged = false;
   if( server->hasArg("command")) {
     if (needsAuthentication()) return;
@@ -114,7 +114,6 @@ String Iotsa433ReceiveMod::info() {
   String message = "<p>Built with 433MHz receiver module. See <a href=\"/433receive\">/433receive</a> to change the remote controls.</p>";
   return message;
 }
-#endif // IOTSA_WITH_WEB
 
 void Iotsa433ReceiveMod::setup() {
   configLoad();
@@ -122,7 +121,6 @@ void Iotsa433ReceiveMod::setup() {
   switch433.setReceiveTolerance(30);
 }
 
-#ifdef IOTSA_WITH_API
 bool Iotsa433ReceiveMod::getHandler(const char *path, JsonObject& reply) {
   JsonArray rvConfig = reply["forwarders"].to<JsonArray>();
   for (auto it: forwarders) {
@@ -170,16 +168,11 @@ bool Iotsa433ReceiveMod::postHandler(const char *path, const JsonVariant& reques
   }
   return anyChanged;
 }
-#endif // IOTSA_WITH_API
 
-void Iotsa433ReceiveMod::serverSetup() {
-#ifdef IOTSA_WITH_WEB
-  server->on("/433receive", std::bind(&Iotsa433ReceiveMod::handler, this));
-#endif
-#ifdef IOTSA_WITH_API
-  api.setup("/api/433receive", true, true, true);
+void Iotsa433ReceiveMod::lateSetup() {
+  // get=true auto-registers the /433receive web page.
+  api.setup("433receive", true, true, true);
   name = "433receive";
-#endif
 }
 
 void Iotsa433ReceiveMod::configLoad() {
