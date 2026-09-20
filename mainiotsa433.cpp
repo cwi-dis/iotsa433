@@ -30,9 +30,11 @@ void setup(void){
   application.lateSetup();
   // For some reason trying to create the callbacks with std::bind doesn't work,
   // and crashes during initialization.
+  // Transient status-LED pulses (cwi-dis/iotsa#176/#256) -- decay back to the
+  // normal status display on their own, no restore logic needed.
   receiveMod.setStatusCallbacks(
-    []{ ledMod.set(0x002000, 250, 0, 1); },
-    []{ ledMod.set(0x200000, 1000, 0, 1); }
+    []{ iotsaStatus.setStatusPulse(0x002000, 0, 0, 250, "433 signal received"); },
+    []{ iotsaStatus.setStatusPulse(0x200000, 0, 0, 1000, "433 signal not decoded"); }
     );
 #ifndef ESP32
   ESP.wdtEnable(WDTO_120MS);
