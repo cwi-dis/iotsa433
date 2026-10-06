@@ -8,22 +8,13 @@
 
 #include <Esp.h>
 #include "iotsa.h"
-#include "iotsaWifi.h"
-#include "iotsaOta.h"
-#include "iotsaLed.h"
 #include "iotsa433Send.h"
 #include "iotsa433Receive.h"
 
-#define NEOPIXEL_PIN 15
-
 IotsaApplication application("Iotsa 433Mhz Home Automation Remote Control Server");
-IotsaWifiMod wifiMod(application);
 
 Iotsa433SendMod sendMod(application);
 Iotsa433ReceiveMod receiveMod(application);
-
-IotsaOtaMod otaMod(application);                // OTA firmware updates
-IotsaLedMod ledMod(application, NEOPIXEL_PIN);  // status LED
 
 void setup(void){
   application.setup();
