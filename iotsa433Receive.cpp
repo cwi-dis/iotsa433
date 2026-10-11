@@ -136,37 +136,34 @@ bool Iotsa433ReceiveMod::getHandler(const char *path, JsonObject& reply) {
   return true;
 }
 
-bool Iotsa433ReceiveMod::putHandler(const char *path, const JsonVariant& request, JsonObject& reply) {
+bool Iotsa433ReceiveMod::putHandler(const char *path, const JsonVariant& request, JsonObject& reply, bool *changed) {
   // Full replace of the forwarders list, so GET/PUT round-trip (needed for
   // iotsa backup/restore, which never worked against this endpoint before -
   // see cwi-dis/iotsa#149). "received" (live telegram log, GET-only) is
   // deliberately not accepted here.
-  if (!request.is<JsonObject>()) return false;
+  if (!request.is<JsonObject>()) return apiError(400, "expected an object");
   JsonObject reqObj = request.as<JsonObject>();
-  if (!reqObj["forwarders"].is<JsonArray>()) return false;
+  if (!reqObj["forwarders"].is<JsonArray>()) return apiError(400, "forwarders: expected an array");
   JsonArray newForwardersArray = reqObj["forwarders"].as<JsonArray>();
   std::vector<Iotsa433ReceiveForwarder> newForwarders;
   for (JsonVariant v : newForwardersArray) {
     Iotsa433ReceiveForwarder newForwarder;
-    if (!newForwarder.putHandler(v)) return false;
+    if (!newForwarder.putHandler(v, reply)) return false;
     newForwarders.push_back(newForwarder);
   }
   forwarders = newForwarders;
   configSave();
+  if (changed) *changed = true;
   return true;
 }
 
-bool Iotsa433ReceiveMod::postHandler(const char *path, const JsonVariant& request, JsonObject& reply) {
-  bool anyChanged = false;
-  JsonObject reqObj = request.as<JsonObject>();
+bool Iotsa433ReceiveMod::postHandler(const char *path, const JsonVariant& request, JsonObject& reply, bool *changed) {
   Iotsa433ReceiveForwarder newForwarder;
-  if (newForwarder.putHandler(reqObj)) {
-    if (_addForwarder(newForwarder)) {
-      anyChanged = true;
-      configSave();
-    }
-  }
-  return anyChanged;
+  if (!newForwarder.putHandler(request, reply)) return false;
+  _addForwarder(newForwarder);
+  configSave();
+  if (changed) *changed = true;
+  return true;
 }
 
 void Iotsa433ReceiveMod::lateSetup() {

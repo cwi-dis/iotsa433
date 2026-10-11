@@ -27,9 +27,6 @@ void setup(void){
     []{ iotsaStatus.setStatusPulse(0x002000, 0, 0, 250, "433 signal received"); },
     []{ iotsaStatus.setStatusPulse(0x200000, 0, 0, 1000, "433 signal not decoded"); }
     );
-#ifndef ESP32
-  ESP.wdtEnable(WDTO_120MS);
-#endif
 }
 
 void loop(void){

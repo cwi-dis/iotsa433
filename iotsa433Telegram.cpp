@@ -76,8 +76,7 @@ bool Iotsa433Telegram::formHandler_args(IotsaWebServer *server, const String& f_
     return false;
 }
 #endif
-#ifdef IOTSA_WITH_API
-void Iotsa433Telegram::getHandler(JsonObject& fRv) {
+bool Iotsa433Telegram::getHandler(JsonObject& fRv) {
     
     fRv["time"] = (::millis() - millis)/1000.0;
     fRv["status"] = status;
@@ -108,10 +107,11 @@ void Iotsa433Telegram::getHandler(JsonObject& fRv) {
     String tri_buf;
     if (decode433_tristate(telegram_binary, telegram_bits, tri_buf)) fRv["telegram_tristate"] = tri_buf;
     fRv["telegram_binary"] = _int2bin(telegram_binary, telegram_bits);
+    return true;
 }
 
-bool Iotsa433Telegram::putHandler(const JsonVariant& request) {
-    return false;
+bool Iotsa433Telegram::putHandler(const JsonVariant& request, JsonObject& reply, bool *changed) {
+    return apiError(400, "received telegrams are read-only");
 }
 
 bool Iotsa433Telegram::_parse(String& telegram_tristate, String& brand, String& group, String& appliance, String& state) {
@@ -130,4 +130,3 @@ bool Iotsa433Telegram::_parse(String& telegram_tristate, String& brand, String& 
 #endif
     return ok;
 }
-#endif

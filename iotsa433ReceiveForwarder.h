@@ -16,10 +16,8 @@ public:
   void formHandler_TD(String& message, bool includeConfig) override;  //< Emit <td> fields with data
   bool formHandler_args(IotsaWebServer *server, const String& f_name, bool includeConfig) override;
 #endif
-#ifdef IOTSA_WITH_API
-  void getHandler(JsonObject& reply) override;
-  bool putHandler(const JsonVariant& request) override;
-#endif
+  bool getHandler(JsonObject& reply) override;
+  bool putHandler(const JsonVariant& request, JsonObject& reply, bool *changed = nullptr) override;
   bool matches(String& _tristate, String& _brand, String& _group, String& _appliance, String& _state);
   bool send(String& _tristate, String& _brand, String& _group, String& _appliance, String& _state);
 

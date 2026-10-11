@@ -93,8 +93,7 @@ bool Iotsa433ReceiveForwarder::formHandler_args(IotsaWebServer *server, const St
 }
 
 #endif
-#ifdef IOTSA_WITH_API
-void Iotsa433ReceiveForwarder::getHandler(JsonObject& reply) {
+bool Iotsa433ReceiveForwarder::getHandler(JsonObject& reply) {
   IotsaRequest::getHandler(reply);
   reply["telegram_tristate"] = telegram_tristate;
   reply["brand"] = brand;
@@ -102,11 +101,12 @@ void Iotsa433ReceiveForwarder::getHandler(JsonObject& reply) {
   reply["appliance"] = appliance;
   reply["state"] = state;
   reply["parameters"] = parameters;
+  return true;
 }
 
-bool Iotsa433ReceiveForwarder::putHandler(const JsonVariant& request) {
-  if (!request.is<JsonObject>()) return false;
-  if (!IotsaRequest::putHandler(request)) return false;
+bool Iotsa433ReceiveForwarder::putHandler(const JsonVariant& request, JsonObject& reply, bool *changed) {
+  if (!request.is<JsonObject>()) return apiError(400, "expected an object");
+  if (!IotsaRequest::putHandler(request, reply, changed)) return false;
   bool any = false;
   const JsonObject& reqObj = request.as<JsonObject>();
   if (getFromRequest<const char *>(reqObj, "telegram_tristate", telegram_tristate)) {
@@ -127,10 +127,10 @@ bool Iotsa433ReceiveForwarder::putHandler(const JsonVariant& request) {
   if (getFromRequest<bool>(reqObj, "parameters", parameters)) {
     any = true;
   }
-  return any;
+  if (any && changed) *changed = true;
+  return true;
 }
 
-#endif
 bool Iotsa433ReceiveForwarder::matches(String& _tristate, String& _brand, String& _group, String& _appliance, String& _state) {
   if (telegram_tristate != "" && _tristate != telegram_tristate) return false;
   if (brand != "" && _brand != brand) return false;

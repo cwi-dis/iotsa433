@@ -197,7 +197,7 @@ bool Iotsa433SendMod::getHandler(const char *path, JsonObject& reply) {
   return false;
 }
 
-bool Iotsa433SendMod::putHandler(const char *path, const JsonVariant& request, JsonObject& reply) {
+bool Iotsa433SendMod::putHandler(const char *path, const JsonVariant& request, JsonObject& reply, bool *changed) {
   bool anyChanged = false;
   JsonObject reqObj = request.as<JsonObject>();
   int telegram_protocol = reqObj["telegram_protocol"] | -1;
@@ -236,11 +236,13 @@ bool Iotsa433SendMod::putHandler(const char *path, const JsonVariant& request, J
     bool ok = _send_brand(telegram_protocol, telegram_pulsewidth, brand, group, appliance, state);
     reply["status"] = ok;
   }
-  return anyChanged;
+  // Sending changes no state; only a request with nothing to send is an error (cwi-dis/iotsa#280).
+  if (!anyChanged) return apiError(400, "nothing to send: need telegram_tristate, telegram_binary, or brand/group/appliance");
+  return true;
 }
 
-bool Iotsa433SendMod::postHandler(const char *path, const JsonVariant& request, JsonObject& reply) {
-  return putHandler(path, request, reply);
+bool Iotsa433SendMod::postHandler(const char *path, const JsonVariant& request, JsonObject& reply, bool *changed) {
+  return putHandler(path, request, reply, changed);
 }
 
 void Iotsa433SendMod::lateSetup() {
