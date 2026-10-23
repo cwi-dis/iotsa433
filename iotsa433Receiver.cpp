@@ -8,18 +8,27 @@ Iotsa433ReceiverMod::Iotsa433ReceiverMod(IotsaApplication &_app, RCSwitch &_rcsw
 : IotsaModule(_app),
   rcswitch(_rcswitch),
   pin(_pin)
-#ifdef IOTSA_WITH_WEB
-  , webLog(*this),
-  webForwarders(forwarders, IotsaWebCollection::Add | IotsaWebCollection::Remove, IotsaWebCollection::Table, IotsaWebContext::Saved,
-      nullptr,
-      // A forwarder needs somewhere to forward to.
-      [](Iotsa433Forwarder& f, IotsaWebContext& ctx) {
-        if (f.url == "") ctx.error("A forwarder needs a URL.");
-        return f.url != "";
-      })
-#endif
 {
 }
+
+#ifdef IOTSA_WITH_WEB
+int Iotsa433TelegramLog::size() {
+  return _mod._logSize();
+}
+
+IotsaModObject* Iotsa433TelegramLog::at(int i) {
+  return &_mod._logAt(i);
+}
+
+// A forwarder needs somewhere to forward to.
+bool Iotsa433ForwarderList::accept(Iotsa433Forwarder& forwarder, IotsaWebContext& ctx) {
+  if (forwarder.url == "") {
+    ctx.error("A forwarder needs a URL.");
+    return false;
+  }
+  return true;
+}
+#endif
 
 void Iotsa433ReceiverMod::setStatusCallbacks(Iotsa433ReceiverCallback _forwarded, Iotsa433ReceiverCallback _failed) {
   forwardedCallback = _forwarded;

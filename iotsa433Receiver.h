@@ -8,6 +8,35 @@
 
 typedef std::function<void(void)> Iotsa433ReceiverCallback;
 
+#ifdef IOTSA_WITH_WEB
+class Iotsa433ReceiverMod;
+
+// The log on the web page: a read-only table, newest last.
+class Iotsa433TelegramLog : public IotsaWebCollection {
+public:
+  Iotsa433TelegramLog(Iotsa433ReceiverMod& mod)
+  : IotsaWebCollection(0, Table, IotsaWebContext::Transient),
+    _mod(mod)
+  {}
+  int size() override;
+  IotsaModObject* at(int i) override;
+  void withExample(std::function<void(IotsaModObject&)> fn) override { Iotsa433Telegram example; fn(example); }
+private:
+  Iotsa433ReceiverMod& _mod;
+};
+
+// The forwarders on the web page, as a table with Add and Remove. A new
+// forwarder needs a URL.
+class Iotsa433ForwarderList : public IotsaWebVector<Iotsa433Forwarder> {
+public:
+  Iotsa433ForwarderList(std::vector<Iotsa433Forwarder>& forwarders)
+  : IotsaWebVector<Iotsa433Forwarder>(forwarders, Add | Remove, Table, IotsaWebContext::Saved)
+  {}
+protected:
+  bool accept(Iotsa433Forwarder& forwarder, IotsaWebContext& ctx) override;
+};
+#endif
+
 //
 // The 433 MHz receiver: keeps a log of the last telegrams received, and
 // forwards each one to every forwarder that matches it. The page
@@ -55,21 +84,9 @@ protected:
   Iotsa433Telegram& _logAt(int i) { return telegrams[(logOut + i) % LOG_SIZE]; }
 
 #ifdef IOTSA_WITH_WEB
-  // The log as a read-only web collection.
-  class TelegramLog : public IotsaWebCollection {
-  public:
-    TelegramLog(Iotsa433ReceiverMod& mod)
-    : IotsaWebCollection(0, IotsaWebCollection::Table, IotsaWebContext::Transient),
-      _mod(mod)
-    {}
-    int size() override { return _mod._logSize(); }
-    IotsaModObject* at(int i) override { return &_mod._logAt(i); }
-    void withExample(std::function<void(IotsaModObject&)> fn) override { Iotsa433Telegram example; fn(example); }
-  private:
-    Iotsa433ReceiverMod& _mod;
-  };
-  TelegramLog webLog;
-  IotsaWebVector<Iotsa433Forwarder> webForwarders;
+  friend class Iotsa433TelegramLog;
+  Iotsa433TelegramLog webLog{*this};
+  Iotsa433ForwarderList webForwarders{forwarders};
 #endif
 };
 
