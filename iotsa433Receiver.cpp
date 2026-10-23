@@ -35,6 +35,9 @@ void Iotsa433ReceiverMod::setup() {
 void Iotsa433ReceiverMod::lateSetup() {
   api.setup("433receiver", true, true, true);
   name = "433receiver";
+  // The forwarders decide what this device does to other devices: not for
+  // everyone on the network. The telegram log stays readable.
+  changesNeedRight("433receiver");
 }
 
 void Iotsa433ReceiverMod::configLoad() {
