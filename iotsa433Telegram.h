@@ -3,30 +3,34 @@
 #include "iotsa.h"
 #include "iotsaApi.h"
 
-
+//
+// One received telegram, an entry in the receiver's log: shown as a row on
+// the page and in GET /api/433receiver. It is not a setting, so it is never
+// saved and can't be changed; the methods for that are empty.
+//
 class Iotsa433Telegram : public IotsaApiModObject {
 public:
-  bool configLoad(IotsaConfigFileLoad& cf, const String& name) override;
-  void configSave(IotsaConfigFileSave& cf, const String& name) override;
+  bool configLoad(IotsaConfigFileLoad& cf, const String& name) override { return false; }
+  void configSave(IotsaConfigFileSave& cf, const String& name) override {}
+  void putHandler(IotsaApiContext& ctx) override { ctx.error(400, "received telegrams are read-only"); }
+  void getHandler(IotsaApiContext& ctx) override;
 #ifdef IOTSA_WITH_WEB
-  static void formHandler_TH(String& message, bool includeConfig) /*override*/; //< Emit <th> fields with names
-  static void formHandler_emptyfields(String& message) /*override*/; //< Emit empty form to add forwarder
-  void formHandler_fields(String& message, const String& text, const String& f_name, bool includeConfig) override;
-  void formHandler_TD(String& message, bool includeConfig) override;  //< Emit <td> fields with data
-  bool formHandler_args(IotsaWebServer *server, const String& f_name, bool includeConfig) override;
+  void formHandler_row(IotsaWebContext& ctx) override;
 #endif
-  bool getHandler(JsonObject& reply) override;
-  bool putHandler(const JsonVariant& request, JsonObject& reply, bool *changed = nullptr) override;
-public:
-  bool _parse(String& telegram_tristate, String& brand, String& group, String& appliance, String& state);
-public:
-  uint32_t millis;
-  uint32_t telegram_binary;
-  int telegram_protocol;
-  int telegram_bits;
-  int telegram_pulsewidth;
-  enum TelegramStatus { queued, ignored, sending, sent_ok, sent_fail} status; // Forwarding status
+  // What the telegram means: its tristate form (if it has one) and, if a
+  // decoder recognises it, brand, group, appliance and state (brand is
+  // "unknown" otherwise). False if neither.
+  bool decode(String& tristate, String& brand, String& group, String& appliance, String& state);
 
+  enum Status { queued, ignored, sent, failed };
+  static const char *statusName(Status s);
+
+  uint32_t receivedAt = 0;  // millis()
+  uint32_t telegram_binary = 0;
+  int telegram_protocol = 0;
+  int telegram_bits = 0;
+  int telegram_pulsewidth = 0;
+  Status status = queued;   // what forwarding did with it
 };
 
 #endif // _IOTSA433TELEGRAM_H_

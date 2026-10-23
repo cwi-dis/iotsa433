@@ -1,8 +1,7 @@
 #include "iotsa.h"
-#include "iotsa433ReceiveForwarder.h"
-#include <RCSwitch.h>
+#include "iotsa433Forwarder.h"
 
-bool Iotsa433ReceiveForwarder::configLoad(IotsaConfigFileLoad& cf, const String& f_name) {
+bool Iotsa433Forwarder::configLoad(IotsaConfigFileLoad& cf, const String& f_name) {
   bool ok = IotsaRequest::configLoad(cf, f_name);
   if (!ok) return false;
   cf.get(f_name + ".telegram_tristate", telegram_tristate, "");
@@ -14,7 +13,7 @@ bool Iotsa433ReceiveForwarder::configLoad(IotsaConfigFileLoad& cf, const String&
   return true;
 }
 
-void Iotsa433ReceiveForwarder::configSave(IotsaConfigFileSave& cf, const String& f_name) {
+void Iotsa433Forwarder::configSave(IotsaConfigFileSave& cf, const String& f_name) {
   IotsaRequest::configSave(cf, f_name);
   cf.put(f_name + ".telegram_tristate", telegram_tristate);
   cf.put(f_name + ".brand", brand);
@@ -24,114 +23,62 @@ void Iotsa433ReceiveForwarder::configSave(IotsaConfigFileSave& cf, const String&
   cf.put(f_name + ".parameters", (int)parameters);
 }
 
-void Iotsa433ReceiveForwarder::formHandler_TH(String& message, bool includeConfig) {
-  IotsaRequest::formHandler_TH(message, includeConfig);
-  message += "<th>telegram_tristate</th><th>brand</th><th>group</th><th>appliance</th><th>state</th><th>parameters?</th>";
+void Iotsa433Forwarder::putHandler(IotsaApiContext& ctx) {
+  IotsaRequest::putHandler(ctx);
+  ctx.arg("telegram_tristate", telegram_tristate, IotsaApiContext::Saved);
+  ctx.arg("brand", brand, IotsaApiContext::Saved);
+  ctx.arg("group", group, IotsaApiContext::Saved);
+  ctx.arg("appliance", appliance, IotsaApiContext::Saved);
+  ctx.arg("state", state, IotsaApiContext::Saved);
+  ctx.arg("parameters", parameters, IotsaApiContext::Saved);
 }
 
-void Iotsa433ReceiveForwarder::formHandler_emptyfields(String& message) {
-  IotsaRequest::formHandler_emptyfields(message);
-  message += "Filter on telegram_tristate: <input name='telegram_tristate'><br>";
-  message += "Filter on brand: <input name='brand'><br>";
-  message += "Filter on group: <input name='group'><br>";
-  message += "Filter on appliance: <input name='appliance'><br>";
-  message += "Filter on state: <input name='state'><br>";
-  message += "Add parameters to URL on reception: <input type='checkbox' name='parameters' value='1'><br>";
-}
-
-void Iotsa433ReceiveForwarder::formHandler_fields(String& message, const String& text, const String& f_name, bool includeConfig) {
-  IotsaSerial.println("Iotsa433ReceiveForwarder::formHandler not implemented");
-}
-
-void Iotsa433ReceiveForwarder::formHandler_TD(String& message, bool includeConfig) {
-  IotsaRequest::formHandler_TD(message, includeConfig);
-  message += "<td>";
-  message += telegram_tristate;
-  message += "</td><td>";
-  message += brand;
-  message += "</td><td>";
-  message += group;
-  message += "</td><td>";
-  message += appliance;
-  message += "</td><td>";
-  message += state;
-  message += "</td><td>";
-  message += String((int)parameters);
-  message += "</td>";
+void Iotsa433Forwarder::getHandler(IotsaApiContext& ctx) {
+  // The base class leaves the read right at "never" for its secrets.
+  IotsaRequest::getHandler(ctx);
+  ctx.showsNeedRight(IOTSA_RIGHT_NONE);
+  ctx.show("telegram_tristate", telegram_tristate);
+  ctx.show("brand", brand);
+  ctx.show("group", group);
+  ctx.show("appliance", appliance);
+  ctx.show("state", state);
+  ctx.show("parameters", parameters);
 }
 
 #ifdef IOTSA_WITH_WEB
-bool Iotsa433ReceiveForwarder::formHandler_args(IotsaWebServer *server, const String& f_name, bool includeConfig) {
-  if (f_name != "") IotsaSerial.println("Iotsa433ReceiveForwarder::formHandler_args got unexpected name argument");
-  bool anyChanged = IotsaRequest::formHandler_args(server, f_name, includeConfig);
-  if (server->hasArg("telegram_tristate")) {
-    telegram_tristate = server->arg("telegram_tristate");
-    anyChanged = true;
-  }
-  if (server->hasArg("brand")) {
-    brand = server->arg("brand");
-    anyChanged = true;
-  }
-  if (server->hasArg("group")) {
-    group = server->arg("group");
-    anyChanged = true;
-  }
-  if (server->hasArg("appliance")) {
-    appliance = server->arg("appliance");
-    anyChanged = true;
-  }
-  if (server->hasArg("state")) {
-    state = server->arg("state");
-    anyChanged = true;
-  }
-  if (server->hasArg("parameters")) {
-    String parameterString = server->arg("parameters"); 
-    parameters = parameterString != "" && parameterString != "0";
-    anyChanged = true;
-  }
-  return anyChanged;
+void Iotsa433Forwarder::formHandler_args(IotsaWebContext& ctx) {
+  IotsaRequest::formHandler_args(ctx);
+  ctx.arg("telegram_tristate", telegram_tristate, IotsaWebContext::Saved);
+  ctx.arg("brand", brand, IotsaWebContext::Saved);
+  ctx.arg("group", group, IotsaWebContext::Saved);
+  ctx.arg("appliance", appliance, IotsaWebContext::Saved);
+  ctx.arg("state", state, IotsaWebContext::Saved);
+  ctx.argCheckbox("parameters", parameters, IotsaWebContext::Saved);
 }
 
-#endif
-bool Iotsa433ReceiveForwarder::getHandler(JsonObject& reply) {
-  IotsaRequest::getHandler(reply);
-  reply["telegram_tristate"] = telegram_tristate;
-  reply["brand"] = brand;
-  reply["group"] = group;
-  reply["appliance"] = appliance;
-  reply["state"] = state;
-  reply["parameters"] = parameters;
-  return true;
+// The fields for adding a new forwarder.
+void Iotsa433Forwarder::formHandler_fields(IotsaWebContext& ctx) {
+  IotsaRequest::formHandler_fields(ctx);
+  ctx.showField("Only tristate telegram", "telegram_tristate", telegram_tristate, IotsaWebContext::Saved, "empty: any");
+  ctx.showField("Only brand", "brand", brand, IotsaWebContext::Saved, "empty: any");
+  ctx.showField("Only group", "group", group, IotsaWebContext::Saved, "empty: any");
+  ctx.showField("Only appliance", "appliance", appliance, IotsaWebContext::Saved, "empty: any");
+  ctx.showField("Only state", "state", state, IotsaWebContext::Saved, "empty: any");
+  ctx.showCheckbox("Add the telegram to the URL", "parameters", parameters, IotsaWebContext::Saved, "as /433send takes it");
 }
 
-bool Iotsa433ReceiveForwarder::putHandler(const JsonVariant& request, JsonObject& reply, bool *changed) {
-  if (!request.is<JsonObject>()) return apiError(400, "expected an object");
-  if (!IotsaRequest::putHandler(request, reply, changed)) return false;
-  bool any = false;
-  const JsonObject& reqObj = request.as<JsonObject>();
-  if (getFromRequest<const char *>(reqObj, "telegram_tristate", telegram_tristate)) {
-    any = true;
-  }
-  if (getFromRequest<const char *>(reqObj, "brand", brand)) {
-    any = true;
-  }
-  if (getFromRequest<const char *>(reqObj, "group", group)) {
-    any = true;
-  }
-  if (getFromRequest<const char *>(reqObj, "appliance", appliance)) {
-    any = true;
-  }
-  if (getFromRequest<const char *>(reqObj, "state", state)) {
-    any = true;
-  }
-  if (getFromRequest<bool>(reqObj, "parameters", parameters)) {
-    any = true;
-  }
-  if (any && changed) *changed = true;
-  return true;
+void Iotsa433Forwarder::formHandler_row(IotsaWebContext& ctx) {
+  IotsaRequest::formHandler_row(ctx);
+  ctx.showCell("Tristate", telegram_tristate);
+  ctx.showCell("Brand", brand);
+  ctx.showCell("Group", group);
+  ctx.showCell("Appliance", appliance);
+  ctx.showCell("State", state);
+  ctx.showCell("Add telegram", parameters ? "yes" : "no");
 }
+#endif // IOTSA_WITH_WEB
 
-bool Iotsa433ReceiveForwarder::matches(String& _tristate, String& _brand, String& _group, String& _appliance, String& _state) {
+bool Iotsa433Forwarder::matches(const String& _tristate, const String& _brand, const String& _group, const String& _appliance, const String& _state) const {
   if (telegram_tristate != "" && _tristate != telegram_tristate) return false;
   if (brand != "" && _brand != brand) return false;
   if (group != "" && _group != group) return false;
@@ -140,20 +87,16 @@ bool Iotsa433ReceiveForwarder::matches(String& _tristate, String& _brand, String
   return true;
 }
 
-bool Iotsa433ReceiveForwarder::send(String& _tristate, String& _brand, String& _group, String& _appliance, String& _state) {
-  // This forwarder applies to this appliance press.
-  const char *query = NULL;
-  String queryStore;
+bool Iotsa433Forwarder::send(const String& _tristate, const String& _brand, const String& _group, const String& _appliance, const String& _state) {
+  String query;
   if (parameters) {
-    if (_brand != "" && _group != "") {
-      queryStore = "brand=" + _brand + "&group=" + _group + "&appliance=" + _appliance + "&state=" + _state;
+    // The fields as the /433send trigger of another iotsa433 takes them.
+    if (_brand != "unknown" && _group != "") {
+      query = "brand=" + _brand + "&group=" + _group + "&appliance=" + _appliance + "&state=" + _state;
     } else {
-      queryStore = "telegram_tristate=" + _tristate;
+      query = "telegram_tristate=" + _tristate;
     } // xxxjack should send binary if triState unavailable
-    query = queryStore.c_str();
   }
-  IFDEBUG IotsaSerial.print("433recv: GET ");
-  IFDEBUG IotsaSerial.println(url);
-  bool ok = IotsaRequest::send(query);
-  return ok;
+  IFDEBUG IotsaSerial.printf("433recv: GET %s %s\n", url.c_str(), query.c_str());
+  return IotsaRequest::send(query.c_str());
 }

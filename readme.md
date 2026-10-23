@@ -40,18 +40,34 @@ The wording used is different for each manufacturer of 433MHz devices and softwa
 - `state` whether the device is on or off. Support for multi-valued states (such dimmers) is easy to add.
 - `telegram_protocol`, `telegram_pulsewidth`, `telegram_tristate`, `telegram_binary`, `telegram_bits` see  <https://github.com/sui77/rc-switch>
 
-## REST API
+## Web pages, REST API and trigger
 
-`GET /api/433receive` returns:
+### The receiver
 
--  `received` is a list of the 10 most recently received commands from remote controls (telegrams). Fields as above, field `time` states how many seconds ago the command was received.
--  `forwarders` is a list of triggers and URLs. If a command is received that matches the trigger a `GET` request is sent to the URL. If a field in the trigger is empty it alwasy matches. Available fields:
+The page `/433receiver` shows the recently received telegrams and the forwarders, and lets you add and remove forwarders.
+
+`GET /api/433receiver` returns:
+
+-  `received` is a list of the 16 most recently received commands from remote controls (telegrams). Fields as above, field `time` states how many seconds ago the command was received, and `status` what forwarding did with it (`queued`, `ignored`, `sent`, `failed`).
+-  `forwarders` is a list of filters and URLs. When a telegram is received, **every** forwarder that matches it sends a `GET` request to its URL, in list order (cwi-dis/iotsa433#2). An empty filter field always matches. Available fields:
 	-  `brand`, `group`, `appliance`, `state` and `telegram_tristate` are as explained above.
-	-  `url` the URL to sent the request to.
-	-  `parameters` is a boolean. If true the fields are added as a query with _name=value_ to the URL.
+	-  `url` the URL to send the request to, with `credentials` (`user:password`), `token` (a bearer token) and `rootCA` (a PEM certificate for `https:` URLs). These three are never shown, only whether they are set.
+	-  `parameters` is a boolean. If true the fields are added as a query with _name=value_ to the URL, in the form the `/433send` trigger takes them, so a forwarder can call the sender of another iotsa433 (a relay).
 
-`POST /api/433receive` adds a new `forwarder` to the end of the list.
+`POST /api/433receiver` adds a new forwarder to the end of the list; it needs a `url`.
 
-`PUT /api/433receive` replaces the whole `forwarders` list with the `forwarders` array in the
+`PUT /api/433receiver` replaces the whole `forwarders` list with the `forwarders` array in the
 request body (any `received` field in the body is ignored). This is what `iotsa backup`/`restore`
 use; `received` itself is GET-only live data, not restorable config.
+
+### The sender
+
+The page `/433sender` has a form for each kind of command: a switch command, a tristate telegram and a binary telegram.
+
+`PUT` or `POST /api/433sender` sends one command. Either `telegram_tristate`, or `telegram_binary`, or a switch command with `group`, `appliance`, `state` (`on`/`off`, `true`/`false` or `1`/`0`) and optionally `brand`. `telegram_protocol` and `telegram_pulsewidth` are optional for all three; 0 or absent means the default. `GET /api/433sender` returns the `brands` this build knows.
+
+The trigger `/433send` takes the same fields as URL arguments and answers `OK` in plain text, or the error. For a script or another device:
+
+```
+curl 'http://iotsa433.local/433send?group=01011&appliance=A&state=on'
+```

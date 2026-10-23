@@ -1,266 +1,257 @@
 #include "iotsa.h"
-#include "iotsa433Send.h"
-#include "iotsaConfigFile.h"
-#include <RCSwitch.h>
+#include "iotsa433Sender.h"
 #include "decode433.h"
 
-extern RCSwitch switch433; // Note: shared variable with Iotsa433Receive
-int switch433_pin_send = 5;
-
-bool Iotsa433SendMod::_send_set_protocol(int telegram_protocol, int telegram_pulsewidth) {
-  if (telegram_protocol < 0) telegram_protocol = 1; // Default telegram_protocol
-  if (telegram_pulsewidth > 0) {
-    switch433.setProtocol(telegram_protocol, telegram_pulsewidth); // Set telegram_protocol, override telegram_pulsewidth
-  } else {
-    switch433.setProtocol(telegram_protocol); // Set telegram_protocol, use default telegram_pulsewidth
-  }
-  return true;
-}
-
-bool Iotsa433SendMod::_send_binary(String telegram_binary) {
-  IFDEBUG IotsaSerial.printf("433send: binary=%s\n", telegram_binary.c_str());
-  switch433.send(telegram_binary.c_str());
-  return true;
-}
-
-bool Iotsa433SendMod::_send_tristate(String telegram_tristate) {
-  IFDEBUG IotsaSerial.printf("433send: tristate=%s\n", telegram_tristate.c_str());
-  switch433.sendTriState(telegram_tristate.c_str());
-  return true;
-}
-
-bool Iotsa433SendMod::_send_brand(int telegram_protocol, int telegram_pulsewidth, String brand, String group, String appliance, bool state) {
-#ifdef WITH_ELRO_FLAMINGO
-  if (telegram_protocol <= 0 && brand == "ELRO") telegram_protocol = 13;
-#endif
-  _send_set_protocol(telegram_protocol, telegram_pulsewidth);
+// The brands this build can send by name, for the page and GET /api/433sender.
+static const char * const brands[] = {
 #ifdef WITH_HEMA
-  if (brand == "HEMA") brand = ""; // default behaviour
+  "HEMA",
 #endif
 #ifdef WITH_ELRO_FLAMINGO
-  if (brand == "ELRO") {
-    String telegram_binary = encode433_elro(group, appliance, (int)state);
-    IFDEBUG IotsaSerial.printf("433send: brand=ELRO group=%s appliance=%s state=%d\n", group.c_str(), appliance.c_str(), state);
-    switch433.send(telegram_binary.c_str());
-    return true;
-  }
+  "ELRO",
 #endif
-  if (brand == "") {
-    // Default treatment. We support ABCDE or 12345, otherwise appliance is a bitstring.
-    int applianceNum = -1;
-    if (appliance == "A" || appliance == "B" || appliance == "C" || appliance == "D" || appliance == "E") {
-      // Hema-style device
-      applianceNum = appliance[0] - 'A' + 1;
-    }
-    if (appliance == "0" || appliance == "1" || appliance == "2" || appliance == "3" || appliance == "4" || appliance == "5") {
-      // Numbered appliances
-      applianceNum = appliance[0] - '0';
-    }
-    if (applianceNum >= 0) {
-      IFDEBUG IotsaSerial.printf("433send: group=%s appliance=%d state=%d\n", group.c_str(), applianceNum, state);
-      if (state) {
-        switch433.switchOn(group.c_str(), applianceNum);
-      } else {
-        switch433.switchOff(group.c_str(), applianceNum);
-      }
-    } else {
-      // Presume appliance is a mask-style string
-      IFDEBUG IotsaSerial.printf("433send: group=%s appliance=%s state=%d\n", group.c_str(), appliance.c_str(), state);
-      if (state) {
-        switch433.switchOn(group.c_str(), appliance.c_str());
-      } else {
-        switch433.switchOff(group.c_str(), appliance.c_str());
-      }
-    }
-    return true;
+  nullptr
+};
+
+// s is not empty and has only characters from chars.
+static bool _onlyOf(const String& s, const char *chars) {
+  if (s.length() == 0) return false;
+  for (unsigned int i = 0; i < s.length(); i++) {
+    if (strchr(chars, s[i]) == nullptr) return false;
   }
-  // Unsupported brand.
-  return false;
-}
-
-void
-Iotsa433SendMod::webHandler() {
-  IotsaWebServer *server = api.webService->server;
-  int telegram_protocol = -1;
-  int telegram_pulsewidth = -1;
-  if (server->hasArg("telegram_protocol")) {
-    telegram_protocol = server->arg("telegram_protocol").toInt();
-  }
-  if (server->hasArg("telegram_pulsewidth")) {
-    telegram_pulsewidth = server->arg("telegram_pulsewidth").toInt();
-  }
-
-  if (server->hasArg("telegram_tristate")) {
-    // Send telegram_tristate command
-    String telegram_tristate = server->arg("telegram_tristate");
-    if (_send_set_protocol(telegram_protocol, telegram_pulsewidth) && _send_tristate(telegram_tristate)) {
-      server->send(200, "text/plain", "OK");
-    } else {
-      server->send(400, "text/plain", "Bad telegram_tristate value");
-    }
-    return;
-  }
-
-  if (server->hasArg("telegram_binary")) {
-    // Send binary command
-    String telegram_binary = server->arg("telegram_binary");
-    if (_send_set_protocol(telegram_protocol, telegram_pulsewidth) && _send_binary(telegram_binary)) {
-      server->send(200, "text/plain", "OK");
-    } else {
-      server->send(400, "text/plain", "Bad binary value");
-    }
-    return;
-  }
-
-  String brand;
-  if (server->hasArg("brand")) brand = server->arg("brand");
-  int nArgs = 0;
-
-  if (server->hasArg("group")) nArgs++;
-  if (server->hasArg("appliance")) nArgs++;
-  if (server->hasArg("state")) nArgs++;
-  if (nArgs == 3) {
-    // We have all arguments. Send command.
-    String group = server->arg("group");
-    String appliance = server->arg("appliance");
-    String state = server->arg("state");
-    bool on = (state == "on" || state == "1");
-    if (!on && ! (state == "off" || state == "0" || state == "")) {
-      server->send(400, "text/plain", "Bad state value");
-      return;
-    }
-
-    if (_send_brand(telegram_protocol, telegram_pulsewidth, brand, group, appliance, on))  {
-      server->send(200, "text/plain", "OK");
-    } else {
-      server->send(400, "text/plain", "Bad command");
-    }
-    return;
-  } else
-  if (nArgs != 0) {
-    // Some but not all arguments. Error.
-    server->send(400, "text/plain", "Must have all of state, group, appliance");
-    return;
-  }
-  //
-  // No command found. Present form for user input.
-  //
-  String message = "<html><head><title>433MHz sender module</title></head><body><h1>433 MHz sender module</h1>";
-
-  message += "<h2>Send Command</h2><form method='get'><table>";
-  message += "<tr><td>Brand:</td><td><input name='brand'></td>";
-  message += "<td><i>(example: HEMA, ELRO, empty)</i></td></tr>";
-  message += "<tr><td>group:</td><td><input name='group'></td>";
-  message += "<td><i>(example: 01011, how DIP switches on device are set)</i></td></tr>";
-  message += "<tr><td>appliance:</td><td><input name='appliance'></td>";
-  message += "<td><i>(example: A, label on remote control appliance, or 01000, binary bitpattern)</i></td></tr>";
-  message += "<tr><td>On/Off:</td><td><input name='state'></td>";
-  message += "<td><i>(example: on or off)</i><br></td></tr>";
-  message += "<tr><td>telegram_protocol:</td><td><input name='telegram_protocol' value='1'></td>";
-  message += "<td><i>(433 bit telegram_protocol, usually 1, see receiver dump)</i><br></td></tr>";
-  message += "<tr><td>telegram_pulsewidth:</td><td><input name='telegram_pulsewidth' value='300'></td>";
-  message += "<td><i>(pulse duration in microseconds, see receiver dump)</i><br></td></tr>";
-  message += "<tr><td></td><td><input type='submit' value='Send Switch Command'></td></tr></table></form>";
-
-  message += "<h2>Send low-level tristate telegram</h2><form method='get'>";
-  message += "Tristate command: <input name='telegram_tristate'>";
-  message += "<i>(example: 00000FFF0FF0)</i><br>";
-  message += "telegram_protocol: <input name='telegram_protocol' value='1'><br>";
-  message += "telegram_pulsewidth: <input name='telegram_pulsewidth' value='300'><br>";
-  message += "<input type='submit' value='Send telegram_tristate'></form>";
-
-  message += "<h2>Send low-level binary telegram</h2><form method='get'>";
-  message += "Binary command: <input name='telegram_binary'>";
-  message += "<i>(example: 010100000000000000010100)</i><br>";
-  message += "telegram_protocol: <input name='telegram_protocol' value='1'><br>";
-  message += "telegram_pulsewidth: <input name='telegram_pulsewidth' value='300'><br>";
-  message += "<input type='submit' value='Send binary'></form>";
-
-  server->send(200, "text/html", message);
-}
-
-String Iotsa433SendMod::info() {
-  String message = "<p>Built with 433 MHz sender module. See <a href=\"/433send\">/433send</a> to change the devices.</p>";
-  return message;
-}
-
-void Iotsa433SendMod::setup() {
-  configLoad();
-  switch433.enableTransmit(switch433_pin_send);
-  //
-  // Note: no support for setProtocol(), setPulseLength() and setRepeatTransmit()
-  // but they should be relatively easy to add.
-  //
-}
-
-bool Iotsa433SendMod::getHandler(const char *path, JsonObject& reply) {
-  return false;
-}
-
-bool Iotsa433SendMod::putHandler(const char *path, const JsonVariant& request, JsonObject& reply, bool *changed) {
-  bool anyChanged = false;
-  JsonObject reqObj = request.as<JsonObject>();
-  int telegram_protocol = reqObj["telegram_protocol"] | -1;
-  int telegram_pulsewidth = reqObj["telegram_pulsewidth"] | -1;
-
-  String telegram_tristate;
-  if (getFromRequest<const char *>(reqObj, "telegram_tristate", telegram_tristate)) {
-    anyChanged = true;
-    bool ok = _send_set_protocol(telegram_protocol, telegram_pulsewidth) && _send_tristate(telegram_tristate);
-    reply["status_tristate"] = ok;
-  }
-  String telegram_binary;
-  if (getFromRequest<const char *>(reqObj, "telegram_binary", telegram_binary)) {
-    anyChanged = true;
-    bool ok = _send_set_protocol(telegram_protocol, telegram_pulsewidth) && _send_binary(telegram_binary);
-    reply["status_binary"] = ok;
-  }
-  String brand;
-  String group;
-  String appliance;
-  if (
-    getFromRequest<const char *>(reqObj, "brand", brand) ||
-    getFromRequest<const char *>(reqObj, "group", group) ||
-    getFromRequest<const char *>(reqObj, "appliance", appliance)
-  ) {
-    anyChanged = true;
-    bool state = false;
-    if (reqObj["state"].is<const char *>()) {
-      String stateStr = reqObj["state"].as<String>();
-      if (stateStr == "1" || stateStr == "on") state = true;
-    } else if (reqObj["state"].is<bool>()) {
-      state = reqObj["state"];
-    } else if (reqObj["state"].is<int>()) {
-      state = (bool)reqObj["state"].as<int>();
-    }
-    bool ok = _send_brand(telegram_protocol, telegram_pulsewidth, brand, group, appliance, state);
-    reply["status"] = ok;
-  }
-  // Sending changes no state; only a request with nothing to send is an error (cwi-dis/iotsa#280).
-  if (!anyChanged) return apiError(400, "nothing to send: need telegram_tristate, telegram_binary, or brand/group/appliance");
   return true;
 }
 
-bool Iotsa433SendMod::postHandler(const char *path, const JsonVariant& request, JsonObject& reply, bool *changed) {
-  return putHandler(path, request, reply, changed);
+void Iotsa433SenderMod::setup() {
+  rcswitch.enableTransmit(pin);
 }
 
-void Iotsa433SendMod::lateSetup() {
-  api.setup("433send", false, true, true);
-  name = "433send";
-  // api.setup() with get=false registers no web page, but /433send has always
-  // had a form (GET on /api/433send is deliberately a no-op), so register it
-  // directly on the shared server.
-  app.server->on("/433send", std::bind(&Iotsa433SendMod::webHandler, this));
+void Iotsa433SenderMod::lateSetup() {
+  api.setup("433sender", true, true, true);
+  name = "433sender";
+#ifdef IOTSA_WITH_WEB
+  addTrigger("433send", [this](IotsaWebContext& ctx) { sendTrigger(ctx); });
+#endif
 }
 
-void Iotsa433SendMod::configLoad() {
-//  IotsaConfigFileLoad cf("/config/433send.cfg"); 
+void Iotsa433SenderMod::loop() {
 }
 
-void Iotsa433SendMod::configSave() {
-//  IotsaConfigFileSave cf("/config/433send.cfg");
+// No configLoad()/configSave(): nothing is kept over reboots.
+
+void Iotsa433SenderMod::_setProtocol(int protocol, int pulsewidth) {
+  if (pulsewidth > 0) {
+    rcswitch.setProtocol(protocol, pulsewidth);
+  } else {
+    rcswitch.setProtocol(protocol);
+  }
 }
 
-void Iotsa433SendMod::loop() {
+bool Iotsa433SenderMod::_send(const Iotsa433Command& cmd, String& error) {
+  bool isSwitch = cmd.brand != "" || cmd.group != "" || cmd.appliance != "" || cmd.state != "";
+  int kinds = (cmd.tristate != "") + (cmd.binary != "") + isSwitch;
+  if (kinds != 1) {
+    error = kinds ? "one command at a time: telegram_tristate, telegram_binary, or a switch command"
+                  : "nothing to send: need telegram_tristate, telegram_binary, or group, appliance and state";
+    return false;
+  }
+  int protocol = cmd.protocol;
+#ifdef WITH_ELRO_FLAMINGO
+  if (protocol <= 0 && cmd.brand == "ELRO") protocol = 13;
+#endif
+  if (protocol <= 0) protocol = 1;
+  if (cmd.tristate != "") {
+    if (!_onlyOf(cmd.tristate, "01F")) {
+      error = "telegram_tristate: only 0, 1 and F";
+      return false;
+    }
+    IFDEBUG IotsaSerial.printf("433send: tristate=%s\n", cmd.tristate.c_str());
+    _setProtocol(protocol, cmd.pulsewidth);
+    rcswitch.sendTriState(cmd.tristate.c_str());
+    return true;
+  }
+  if (cmd.binary != "") {
+    if (!_onlyOf(cmd.binary, "01")) {
+      error = "telegram_binary: only 0 and 1";
+      return false;
+    }
+    IFDEBUG IotsaSerial.printf("433send: binary=%s\n", cmd.binary.c_str());
+    _setProtocol(protocol, cmd.pulsewidth);
+    rcswitch.send(cmd.binary.c_str());
+    return true;
+  }
+  if (cmd.group == "" || cmd.appliance == "" || cmd.state == "") {
+    error = "a switch command needs group, appliance and state";
+    return false;
+  }
+  bool on;
+  if (cmd.state == "on" || cmd.state == "1" || cmd.state == "true") {
+    on = true;
+  } else if (cmd.state == "off" || cmd.state == "0" || cmd.state == "false") {
+    on = false;
+  } else {
+    error = "state: on or off";
+    return false;
+  }
+  _setProtocol(protocol, cmd.pulsewidth);
+  return _sendSwitch(cmd, on, error);
+}
+
+bool Iotsa433SenderMod::_sendSwitch(const Iotsa433Command& cmd, bool on, String& error) {
+#ifdef WITH_ELRO_FLAMINGO
+  if (cmd.brand == "ELRO") {
+    String telegram = encode433_elro(cmd.group, cmd.appliance, (int)on);
+    IFDEBUG IotsaSerial.printf("433send: brand=ELRO group=%s appliance=%s state=%d\n", cmd.group.c_str(), cmd.appliance.c_str(), on);
+    rcswitch.send(telegram.c_str());
+    return true;
+  }
+#endif
+  if (cmd.brand != "" && cmd.brand != "HEMA") {
+    error = "unknown brand " + cmd.brand;
+    return false;
+  }
+  // HEMA, the default: appliance A-E or 0-5, otherwise a bit pattern.
+  int applianceNum = -1;
+  if (cmd.appliance.length() == 1) {
+    char c = cmd.appliance[0];
+    if (c >= 'A' && c <= 'E') applianceNum = c - 'A' + 1;
+    if (c >= '0' && c <= '5') applianceNum = c - '0';
+  }
+  if (applianceNum >= 0) {
+    IFDEBUG IotsaSerial.printf("433send: group=%s appliance=%d state=%d\n", cmd.group.c_str(), applianceNum, on);
+    if (on) {
+      rcswitch.switchOn(cmd.group.c_str(), applianceNum);
+    } else {
+      rcswitch.switchOff(cmd.group.c_str(), applianceNum);
+    }
+  } else {
+    IFDEBUG IotsaSerial.printf("433send: group=%s appliance=%s state=%d\n", cmd.group.c_str(), cmd.appliance.c_str(), on);
+    if (on) {
+      rcswitch.switchOn(cmd.group.c_str(), cmd.appliance.c_str());
+    } else {
+      rcswitch.switchOff(cmd.group.c_str(), cmd.appliance.c_str());
+    }
+  }
+  return true;
+}
+
+//
+// Reading a command: the same fields on the page, the trigger and the API.
+// Only state differs: the API also takes true/false and 1/0 as JSON values.
+//
+#ifdef IOTSA_WITH_WEB
+static void _readState(IotsaWebContext& ctx, String& state) {
+  ctx.arg("state", state, IotsaContext::Transient);
+}
+#endif
+
+static void _readState(IotsaApiContext& ctx, String& state) {
+  if (!ctx.argAction("state", IotsaContext::Transient)) return;
+  JsonVariant v = ctx.request()["state"];
+  if (v.is<const char *>()) {
+    state = v.as<const char *>();
+  } else if (v.is<bool>()) {
+    state = v.as<bool>() ? "on" : "off";
+  } else if (v.is<long>()) {
+    state = v.as<long>() ? "on" : "off";
+  } else {
+    ctx.error(400, "state: on or off");
+  }
+}
+
+template<class Ctx> static void _readCommand(Ctx& ctx, Iotsa433Command& cmd) {
+  ctx.arg("telegram_tristate", cmd.tristate, IotsaContext::Transient);
+  ctx.arg("telegram_binary", cmd.binary, IotsaContext::Transient);
+  ctx.arg("brand", cmd.brand, IotsaContext::Transient);
+  ctx.arg("group", cmd.group, IotsaContext::Transient);
+  ctx.arg("appliance", cmd.appliance, IotsaContext::Transient);
+  _readState(ctx, cmd.state);
+  ctx.arg("telegram_protocol", cmd.protocol, IotsaContext::Transient);
+  ctx.arg("telegram_pulsewidth", cmd.pulsewidth, IotsaContext::Transient);
+}
+
+// The brands this build knows, so a client can tell.
+void Iotsa433SenderMod::getHandler(IotsaApiContext& ctx) {
+  JsonArray list = ctx.reply()["brands"].to<JsonArray>();
+  for (int i = 0; brands[i]; i++) list.add(brands[i]);
+}
+
+// Sending changes no state: PUT and POST are the same.
+void Iotsa433SenderMod::putHandler(IotsaApiContext& ctx) {
+  Iotsa433Command cmd;
+  _readCommand(ctx, cmd);
+  if (ctx.failed()) return;
+  String error;
+  if (!_send(cmd, error)) ctx.error(400, error);
+}
+
+void Iotsa433SenderMod::postHandler(IotsaApiContext& ctx) {
+  putHandler(ctx);
+}
+
+#ifdef IOTSA_WITH_WEB
+// The page has three forms, one per kind of command, each in its own Scope
+// ("switch.group", ...) with its own Send button.
+static const char * const forms[] = {"switch", "tristate", "binary"};
+
+void Iotsa433SenderMod::formHandler_args(IotsaWebContext& ctx) {
+  for (auto f : forms) {
+    IotsaWebContext::Scope s(ctx, f);
+    if (!ctx.argAction("send", IotsaWebContext::Transient)) continue;
+    Iotsa433Command cmd;
+    _readCommand(ctx, cmd);
+    if (ctx.failed()) return;
+    String error;
+    if (_send(cmd, error)) {
+      ctx.feedback("Sent.");
+    } else {
+      ctx.error(error);
+    }
+    return;
+  }
+}
+
+void Iotsa433SenderMod::formHandler_fields(IotsaWebContext& ctx) {
+  if (!ctx.includesEveryday()) return;
+  String brandHint = "empty for the default";
+  for (int i = 0; brands[i]; i++) brandHint += String(", ") + brands[i];
+  {
+    IotsaWebContext::Scope s(ctx, "switch");
+    IotsaWebContext::Form form(ctx, "Send", "Switch command", "send");
+    ctx.showField("Brand", "brand", "", IotsaWebContext::Transient, brandHint.c_str());
+    ctx.showField("Group", "group", "", IotsaWebContext::Transient, "the DIP switches on the device, like 01011");
+    ctx.showField("Appliance", "appliance", "", IotsaWebContext::Transient, "the letter on the remote control, like A, or a bit pattern like 01000");
+    ctx.showField("State", "state", "on", IotsaWebContext::Transient, "on or off");
+    ctx.showField("Protocol", "telegram_protocol", 0, IotsaWebContext::Transient, "0: the brand's default");
+    ctx.showField("Pulse width", "telegram_pulsewidth", 0, IotsaWebContext::Transient, "microseconds, 0: the protocol's default");
+  }
+  {
+    IotsaWebContext::Scope s(ctx, "tristate");
+    IotsaWebContext::Form form(ctx, "Send", "Tristate telegram", "send");
+    ctx.showField("Telegram", "telegram_tristate", "", IotsaWebContext::Transient, "like 00000FFF0FF0");
+    ctx.showField("Protocol", "telegram_protocol", 0, IotsaWebContext::Transient, "0: protocol 1; the receiver's log shows what a remote control uses");
+    ctx.showField("Pulse width", "telegram_pulsewidth", 0, IotsaWebContext::Transient, "microseconds, 0: the protocol's default");
+  }
+  {
+    IotsaWebContext::Scope s(ctx, "binary");
+    IotsaWebContext::Form form(ctx, "Send", "Binary telegram", "send");
+    ctx.showField("Telegram", "telegram_binary", "", IotsaWebContext::Transient, "like 010100000000000000010100");
+    ctx.showField("Protocol", "telegram_protocol", 0, IotsaWebContext::Transient, "0: protocol 1; the receiver's log shows what a remote control uses");
+    ctx.showField("Pulse width", "telegram_pulsewidth", 0, IotsaWebContext::Transient, "microseconds, 0: the protocol's default");
+  }
+}
+
+// The trigger, /433send: the same fields, without a Send button. Answers OK,
+// or the error.
+void Iotsa433SenderMod::sendTrigger(IotsaWebContext& ctx) {
+  Iotsa433Command cmd;
+  _readCommand(ctx, cmd);
+  if (ctx.failed()) return;
+  String error;
+  if (!_send(cmd, error)) ctx.error(error);
+}
+#endif // IOTSA_WITH_WEB
+
+String Iotsa433SenderMod::info() {
+  return "<p>433 MHz sender: see <a href=\"/433sender\">/433sender</a>, or call /433send for a script or another device.</p>";
 }
