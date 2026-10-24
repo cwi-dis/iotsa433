@@ -97,6 +97,5 @@ bool Iotsa433Forwarder::send(const String& _tristate, const String& _brand, cons
       query = "telegram_tristate=" + _tristate;
     } // xxxjack should send binary if triState unavailable
   }
-  IFDEBUG IotsaSerial.printf("433recv: GET %s %s\n", url.c_str(), query.c_str());
   return IotsaRequest::send(query.c_str());
 }

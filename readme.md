@@ -54,11 +54,11 @@ The page `/433receiver` shows the recently received telegrams and the forwarders
 	-  `url` the URL to send the request to, with `credentials` (`user:password`), `token` (a bearer token) and `rootCA` (a PEM certificate for `https:` URLs). These three are never shown, only whether they are set.
 	-  `parameters` is a boolean. If true the fields are added as a query with _name=value_ to the URL, in the form the `/433send` trigger takes them, so a forwarder can call the sender of another iotsa433 (a relay).
 
-`POST /api/433receiver` adds a new forwarder to the end of the list; it needs a `url`.
+The forwarders are a collection, with iotsa's collection shape (cwi-dis/iotsa#309):
 
-`PUT /api/433receiver` replaces the whole `forwarders` list with the `forwarders` array in the
-request body (any `received` field in the body is ignored). This is what `iotsa backup`/`restore`
-use; `received` itself is GET-only live data, not restorable config.
+-  `PUT /api/433receiver` with `{"forwarders": [...]}` replaces the whole list. This is what `iotsa backup`/`restore` use; a `received` field in the body is ignored: it is GET-only live data, not restorable config.
+-  `PUT /api/433receiver` with `{"forwarders": {"1": {...}}}` changes the second forwarder (the key is the index), `{"forwarders": {"1": null}}` removes it.
+-  `POST /api/433receiver` with `{"forwarders": {"url": "...", ...}}` adds a forwarder to the end of the list; it needs a `url`.
 
 ### The sender
 

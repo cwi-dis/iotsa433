@@ -1,7 +1,6 @@
 #include "iotsa.h"
 #include "decode433.h"
 
-#undef decode433_debug_prints
 
 static const char* bin2tristate(const char* bin);
 static char * dec2binWzerofill(unsigned long Dec, unsigned int bitLength);
@@ -109,10 +108,7 @@ bool decode433_elro(uint32_t dec, int bitLength, String& dip, String& appliance,
   uint16_t receiverId = (uint16_t)mn[0];
   uint16_t value = (((mn[1] >> 1) & 1) + (mn[6] & 0x7) + ((mn[6] & 0x8) >> 3));
   uint16_t transmitterId = (mn[5] << 12) + (mn[4] << 8) + (mn[3] << 4) + (mn[2] << 0);
-#ifdef decode433_debug_prints
-  uint16_t rollingCode = (mn[1] >> 2);
-  IotsaSerial.printf("xxxjack decode_433: receiverID=0x%x, value=0x%x, rollingCode=0x%x, transmitterId=0x%x\n", receiverId, value, rollingCode, transmitterId);
-#endif
+  IOTSA_LOG_DEBUG("433decode", "decode: receiverID=0x%x, value=0x%x, rollingCode=0x%x, transmitterId=0x%x", receiverId, value, (unsigned)(mn[1] >> 2), transmitterId);
   dip = String(transmitterId);
   appliance = String(receiverId);
   state = String(value);
@@ -120,9 +116,7 @@ bool decode433_elro(uint32_t dec, int bitLength, String& dip, String& appliance,
 }
 
 String encode433_elro(String group, String appliance, int state) {
-#ifdef decode433_debug_prints
-  IotsaSerial.printf("xxxjack encode_433: group=%s, appliance=%s, state=%d\n", group.c_str(), appliance.c_str(), state);
-#endif
+  IOTSA_LOG_DEBUG("433decode", "encode: group=%s, appliance=%s, state=%d", group.c_str(), appliance.c_str(), state);
   uint8_t mn[7];
   static uint8_t rollingCode;
   rollingCode = (rollingCode+1) & 0x3;
@@ -172,13 +166,6 @@ String encode433_elro(String group, String appliance, int state) {
   msg = (msg >> 2) | ((msg & 3) << 0x1a);			// shift 2 bits right & copy lowest 2 bits of cbuf[0] in msg bit 27/28
   String rv = String(msg, BIN);
   while (rv.length() < 28) rv = "0" + rv;
-#ifdef decode433_debug_prints
-  { 
-    String _1, _2, _3; 
-    decode433_elro(msg, 28, _1, _2, _3);
-    IotsaSerial.printf("xxxjack deencode_433: group=%s, appliance=%s, state=%s\n", _1.c_str(), _2.c_str(), _3.c_str());
-  }
-#endif
   return rv;
 }
 #endif // WITH_ELRO_FLAMINGO

@@ -65,7 +65,7 @@ bool Iotsa433SenderMod::_send(const Iotsa433Command& cmd, String& error) {
       error = "telegram_tristate: only 0, 1 and F";
       return false;
     }
-    IFDEBUG IotsaSerial.printf("433send: tristate=%s\n", cmd.tristate.c_str());
+    IOTSA_LOG_DEBUG("433sender", "tristate=%s", cmd.tristate.c_str());
     _setProtocol(protocol, cmd.pulsewidth);
     rcswitch.sendTriState(cmd.tristate.c_str());
     return true;
@@ -75,7 +75,7 @@ bool Iotsa433SenderMod::_send(const Iotsa433Command& cmd, String& error) {
       error = "telegram_binary: only 0 and 1";
       return false;
     }
-    IFDEBUG IotsaSerial.printf("433send: binary=%s\n", cmd.binary.c_str());
+    IOTSA_LOG_DEBUG("433sender", "binary=%s", cmd.binary.c_str());
     _setProtocol(protocol, cmd.pulsewidth);
     rcswitch.send(cmd.binary.c_str());
     return true;
@@ -101,7 +101,7 @@ bool Iotsa433SenderMod::_sendSwitch(const Iotsa433Command& cmd, bool on, String&
 #ifdef WITH_ELRO_FLAMINGO
   if (cmd.brand == "ELRO") {
     String telegram = encode433_elro(cmd.group, cmd.appliance, (int)on);
-    IFDEBUG IotsaSerial.printf("433send: brand=ELRO group=%s appliance=%s state=%d\n", cmd.group.c_str(), cmd.appliance.c_str(), on);
+    IOTSA_LOG_DEBUG("433sender", "brand=ELRO group=%s appliance=%s state=%d", cmd.group.c_str(), cmd.appliance.c_str(), on);
     rcswitch.send(telegram.c_str());
     return true;
   }
@@ -118,14 +118,14 @@ bool Iotsa433SenderMod::_sendSwitch(const Iotsa433Command& cmd, bool on, String&
     if (c >= '0' && c <= '5') applianceNum = c - '0';
   }
   if (applianceNum >= 0) {
-    IFDEBUG IotsaSerial.printf("433send: group=%s appliance=%d state=%d\n", cmd.group.c_str(), applianceNum, on);
+    IOTSA_LOG_DEBUG("433sender", "group=%s appliance=%d state=%d", cmd.group.c_str(), applianceNum, on);
     if (on) {
       rcswitch.switchOn(cmd.group.c_str(), applianceNum);
     } else {
       rcswitch.switchOff(cmd.group.c_str(), applianceNum);
     }
   } else {
-    IFDEBUG IotsaSerial.printf("433send: group=%s appliance=%s state=%d\n", cmd.group.c_str(), cmd.appliance.c_str(), on);
+    IOTSA_LOG_DEBUG("433sender", "group=%s appliance=%s state=%d", cmd.group.c_str(), cmd.appliance.c_str(), on);
     if (on) {
       rcswitch.switchOn(cmd.group.c_str(), cmd.appliance.c_str());
     } else {

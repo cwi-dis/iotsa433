@@ -8,40 +8,40 @@
 
 typedef std::function<void(void)> Iotsa433ReceiverCallback;
 
-#ifdef IOTSA_WITH_WEB
 class Iotsa433ReceiverMod;
 
-// The log on the web page: a read-only table, newest last.
-class Iotsa433TelegramLog : public IotsaWebCollection {
+// The log, "received": a read-only table, newest last, on the page and in
+// the API (cwi-dis/iotsa#309).
+class Iotsa433TelegramLog : public IotsaCollection {
 public:
   Iotsa433TelegramLog(Iotsa433ReceiverMod& mod)
-  : IotsaWebCollection(0, Table, IotsaWebContext::Transient),
+  : IotsaCollection("received", 0, Table, IotsaContext::Transient),
     _mod(mod)
   {}
   int size() override;
-  IotsaModObject* at(int i) override;
-  void withExample(std::function<void(IotsaModObject&)> fn) override { Iotsa433Telegram example; fn(example); }
+  IotsaApiModObject* at(int i) override;
+  void withExample(std::function<void(IotsaApiModObject&)> fn) override { Iotsa433Telegram example; fn(example); }
 private:
   Iotsa433ReceiverMod& _mod;
 };
 
-// The forwarders on the web page, as a table with Add and Remove. A new
-// forwarder needs a URL.
-class Iotsa433ForwarderList : public IotsaWebVector<Iotsa433Forwarder> {
+// The forwarders, "forwarders": a table with Add and Remove on the page, and
+// the collection's shape in the API. A new forwarder needs a URL.
+class Iotsa433ForwarderList : public IotsaVector<Iotsa433Forwarder> {
 public:
   Iotsa433ForwarderList(std::vector<Iotsa433Forwarder>& forwarders)
-  : IotsaWebVector<Iotsa433Forwarder>(forwarders, Add | Remove, Table, IotsaWebContext::Saved)
+  : IotsaVector<Iotsa433Forwarder>("forwarders", forwarders, Add | Remove, Table, IotsaContext::Saved)
   {}
 protected:
-  bool accept(Iotsa433Forwarder& forwarder, IotsaWebContext& ctx) override;
+  bool accept(Iotsa433Forwarder& forwarder, IotsaContext& ctx) override;
 };
-#endif
 
 //
 // The 433 MHz receiver: keeps a log of the last telegrams received, and
 // forwards each one to every forwarder that matches it. The page
 // /433receiver shows the log and the forwarders; GET /api/433receiver
-// returns both, PUT replaces the forwarders, POST adds one.
+// returns both, PUT and POST change the forwarders as a collection
+// (cwi-dis/iotsa#309).
 //
 class Iotsa433ReceiverMod : public IotsaModule {
 public:
@@ -83,11 +83,9 @@ protected:
   int _logSize() const { return (logIn - logOut + LOG_SIZE) % LOG_SIZE; }
   Iotsa433Telegram& _logAt(int i) { return telegrams[(logOut + i) % LOG_SIZE]; }
 
-#ifdef IOTSA_WITH_WEB
   friend class Iotsa433TelegramLog;
-  Iotsa433TelegramLog webLog{*this};
-  Iotsa433ForwarderList webForwarders{forwarders};
-#endif
+  Iotsa433TelegramLog telegramLog{*this};
+  Iotsa433ForwarderList forwarderList{forwarders};
 };
 
 #endif

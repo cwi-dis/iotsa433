@@ -2,8 +2,6 @@
 #include "iotsa433Receiver.h"
 #include "iotsaConfigFile.h"
 
-#undef _debug_print_raw_codes
-
 Iotsa433ReceiverMod::Iotsa433ReceiverMod(IotsaApplication &_app, RCSwitch &_rcswitch, int _pin)
 : IotsaModule(_app),
   rcswitch(_rcswitch),
@@ -11,24 +9,33 @@ Iotsa433ReceiverMod::Iotsa433ReceiverMod(IotsaApplication &_app, RCSwitch &_rcsw
 {
 }
 
-#ifdef IOTSA_WITH_WEB
 int Iotsa433TelegramLog::size() {
   return _mod._logSize();
 }
 
-IotsaModObject* Iotsa433TelegramLog::at(int i) {
+IotsaApiModObject* Iotsa433TelegramLog::at(int i) {
   return &_mod._logAt(i);
 }
 
 // A forwarder needs somewhere to forward to.
-bool Iotsa433ForwarderList::accept(Iotsa433Forwarder& forwarder, IotsaWebContext& ctx) {
+bool Iotsa433ForwarderList::accept(Iotsa433Forwarder& forwarder, IotsaContext& ctx) {
   if (forwarder.url == "") {
-    ctx.error("A forwarder needs a URL.");
+    ctx.error(400, "A forwarder needs a URL.");
     return false;
   }
   return true;
 }
-#endif
+
+// The raw timings of a telegram, for the debug log.
+static String _rawCodes(RCSwitch& rcswitch, int telegram_bits) {
+  unsigned int *raw = rcswitch.getReceivedRawdata();
+  String rv;
+  for (int i = 0; i < 2 * telegram_bits; i++) {
+    if (i) rv += " ";
+    rv += String(raw[i]);
+  }
+  return rv;
+}
 
 void Iotsa433ReceiverMod::setStatusCallbacks(Iotsa433ReceiverCallback _forwarded, Iotsa433ReceiverCallback _failed) {
   forwardedCallback = _forwarded;
@@ -73,18 +80,7 @@ void Iotsa433ReceiverMod::loop() {
     int telegram_bits = rcswitch.getReceivedBitlength();
     int telegram_protocol = rcswitch.getReceivedProtocol();
     int telegram_pulsewidth = rcswitch.getReceivedDelay();
-    IFDEBUG IotsaSerial.printf("433recv: ts=%lu msg=0x%x\n", millis(), telegram_binary);
-#ifdef _debug_print_raw_codes
-    {
-      unsigned int *raw = rcswitch.getReceivedRawdata();
-      IotsaSerial.printf("433recv raw %d telegram_bits: ", telegram_bits);
-      for(int i=0; i<2*telegram_bits; i++) {
-        IotsaSerial.print(raw[i]);
-        IotsaSerial.print(" ");
-      }
-      IotsaSerial.println();
-    }
-#endif
+    IOTSA_LOG_DEBUG("433receiver", "received 0x%x, %d bits: %s", (unsigned)telegram_binary, telegram_bits, _rawCodes(rcswitch, telegram_bits).c_str());
     _received(telegram_binary, telegram_protocol, telegram_bits, telegram_pulsewidth);
     rcswitch.resetAvailable();
   }
@@ -122,87 +118,44 @@ void Iotsa433ReceiverMod::_forwardOne() {
       if (forwardedCallback) forwardedCallback();
     } else {
       t.status = Iotsa433Telegram::failed;
-      IFDEBUG IotsaSerial.println("forward failed");
+      IOTSA_LOG("433receiver", "forward failed");
       if (failedCallback) failedCallback();
     }
   }
 }
 
+// Both collections (cwi-dis/iotsa#309). Only the forwarders change: a
+// restore that sends "received" back gets it reported as ignored.
 void Iotsa433ReceiverMod::getHandler(IotsaApiContext& ctx) {
-  JsonArray forwardersList = ctx.reply()["forwarders"].to<JsonArray>();
-  int i = 0;
-  for (auto& f: forwarders) {
-    IotsaApiContext::Scope s(ctx, String(i++), JsonObject(), forwardersList.add<JsonObject>());
-    f.getHandler(ctx);
-  }
-  JsonArray receivedList = ctx.reply()["received"].to<JsonArray>();
-  for (i = 0; i < _logSize(); i++) {
-    IotsaApiContext::Scope s(ctx, String(i), JsonObject(), receivedList.add<JsonObject>());
-    _logAt(i).getHandler(ctx);
-  }
+  forwarderList.getHandler(ctx);
+  telegramLog.getHandler(ctx);
 }
 
-// Replace all forwarders, so a GET can be PUT back (backup and restore). The
-// log ("received") can't be changed.
 void Iotsa433ReceiverMod::putHandler(IotsaApiContext& ctx) {
-  IotsaApiContext::Change change(ctx, "forwarders", IotsaApiContext::Saved);
-  if (!change) {
-    if (!ctx.failed()) ctx.error(400, "forwarders missing");
-    return;
-  }
-  JsonVariant list = ctx.request()["forwarders"];
-  if (!list.is<JsonArray>()) {
-    ctx.error(400, "forwarders: expected an array");
-    return;
-  }
-  std::vector<Iotsa433Forwarder> newForwarders;
-  int i = 0;
-  for (JsonVariant v : list.as<JsonArray>()) {
-    if (!v.is<JsonObject>()) {
-      ctx.error(400, "forwarders: expected an object for each forwarder");
-      return;
-    }
-    Iotsa433Forwarder f;
-    IotsaApiContext::Scope s(ctx, "forwarders." + String(i++), v.as<JsonObject>(), JsonObject());
-    f.putHandler(ctx);
-    if (ctx.failed()) return;
-    newForwarders.push_back(f);
-  }
-  forwarders = newForwarders;
-  change.done();
+  forwarderList.putHandler(ctx);
 }
 
-// Add a forwarder.
 void Iotsa433ReceiverMod::postHandler(IotsaApiContext& ctx) {
-  IotsaApiContext::Change change(ctx, "url", IotsaApiContext::Saved);
-  if (!change) {
-    if (!ctx.failed()) ctx.error(400, "url missing");
-    return;
-  }
-  Iotsa433Forwarder f;
-  f.putHandler(ctx);
-  if (!change) return;
-  forwarders.push_back(f);
-  change.done();
+  forwarderList.postHandler(ctx);
 }
 
 #ifdef IOTSA_WITH_WEB
 void Iotsa433ReceiverMod::formHandler_args(IotsaWebContext& ctx) {
   IotsaWebContext::Scope s(ctx, "forwarders");
-  webForwarders.formHandler_args(ctx);
+  forwarderList.formHandler_args(ctx);
 }
 
 void Iotsa433ReceiverMod::formHandler_fields(IotsaWebContext& ctx) {
   if (ctx.includesEveryday()) {
     ctx << "<h3>Recently received telegrams</h3>\n";
     IotsaWebContext::Scope s(ctx, "received");
-    webLog.formHandler_fields(ctx);
+    telegramLog.formHandler_fields(ctx);
     ctx << "<p><a href=\"/433receiver\">Refresh</a></p>\n";
   }
   if (ctx.includesSettings()) {
     ctx << "<h3>Forwarders</h3>\n<p>Every forwarder that matches a received telegram sends its request, in this order.</p>\n";
     IotsaWebContext::Scope s(ctx, "forwarders");
-    webForwarders.formHandler_fields(ctx);
+    forwarderList.formHandler_fields(ctx);
   }
 }
 #endif // IOTSA_WITH_WEB
